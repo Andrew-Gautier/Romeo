@@ -1,0 +1,65 @@
+Key Insights from Juliet Structure
+
+    Flaw Identification:
+
+        Positive (P): The function containing the flaw (typically badSink() or bad()).
+
+        Negative (N): Non-trivial functions without flaws (e.g., goodG2B, goodB2G).
+
+        Trivial wrappers (e.g., functions only calling others) are excluded.
+
+    Naming Conventions:
+
+        badSink/bad functions → Vulnerable.
+
+        good* functions (e.g., goodG2BSink) → Non-vulnerable.
+
+        Files with _bad suffix → action() is vulnerable.
+
+    Flow Variants:
+
+        Data/Control Flow: Flaws span multiple functions/files (e.g., 53c.c → 53d.c).
+
+        Baseline: Flaws are contained within a single function.
+
+Step-by-Step Parsing Strategy
+
+    Group Files by Test Case:
+
+        Organize files by CWE and test case ID (e.g., CWE78_OS_Command_Injection__char_environment_w32_execv_*).
+
+        Process all files in a test case together to track data flow.
+
+    Identify Positive/Negative Functions:
+
+        def label_function(func_name, file_suffix):
+            if "badSink" in func_name or ("bad" in func_name and "badSink" not in all_functions):
+                return "POSITIVE"  # Primary flaw indicator
+            elif "good" in func_name or file_suffix == "_good":
+                return "NEGATIVE"  # Non-vulnerable variants
+            else:
+        return "NEGATIVE"  # Non-flawed by Juliet conventions
+
+    Skip Trivial Wrappers:
+    Ignore functions that only pass data (e.g., badSink() in 53c.c):
+    c
+
+        void badSink(char * data) {
+            nextFunction(data); // Trivial wrapper → exclude
+        }
+
+    Parsers:
+
+        C/C++: Use pycparser or Clang’s Python bindings.
+
+        Java/C#: Use javalang or ANTLR grammars.
+
+    Pipeline:
+
+        Group files by test case.
+
+        Parse functions, skipping trivial wrappers.
+
+        Label functions using naming rules.
+
+        Extract lines and propagate labels.
