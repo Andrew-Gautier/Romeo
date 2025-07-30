@@ -112,7 +112,7 @@ class JulietParser:
                 content = f.read()
                 lines = content.split('\n')
             
-            # Improved regex patterns for C/C++ function extraction
+            # Regex patterns for C/C++ function extraction
             # Pattern 1: Standard function definitions
             func_patterns = [
                 r'^(?:static\s+)?(?:void|int|char\s*\*|double|float|long|short|unsigned\s+\w+|\w+\s*\*?)\s+(\w+)\s*\([^)]*\)\s*$',
@@ -338,7 +338,95 @@ class JulietParser:
             logger.warning(f"Error checking trivial wrapper for {func_name} in {file_path}: {e}")
         
         return False
-    
+    def analyze_function_counts_by_line_threshold(self, results, thresholds=[10, 15, 20]):
+        """
+        Analyze how many positive and negative functions remain at different line count thresholds.
+        
+        Args:
+            results: Parsed Juliet dataset results
+            thresholds: List of minimum line count thresholds to analyze
+        
+        Returns:
+            Dictionary with analysis results
+        """
+        if not results or 'test_cases' not in results:
+            print("❌ No results available. Please run the parser first!")
+            return None
+        
+        # Collect all function data
+        all_functions = []
+        for test_case_id, test_case in results['test_cases'].items():
+            for file_info in test_case['files']:
+                for func in file_info['functions']:
+                    line_count = func['end_line'] - func['start_line'] + 1
+                    all_functions.append({
+                        'name': func['name'],
+                        'lines': line_count,
+                        'label': func['label'],
+                        'test_case': test_case_id
+                    })
+        
+        # Calculate baseline (all functions)
+        total_functions = len(all_functions)
+        total_positive = len([f for f in all_functions if f['label'] == 'POSITIVE'])
+        total_negative = len([f for f in all_functions if f['label'] == 'NEGATIVE'])
+        
+        print(f"📊 Function Count Analysis by Line Threshold\n")
+        print(f"📋 Baseline (All Functions):")
+        print(f"   Total: {total_functions:,}")
+        print(f"   Positive (Vulnerable): {total_positive:,} ({total_positive/total_functions*100:.1f}%)")
+        print(f"   Negative (Secure): {total_negative:,} ({total_negative/total_functions*100:.1f}%)")
+        
+        analysis_results = {
+            'baseline': {
+                'total': total_functions,
+                'positive': total_positive,
+                'negative': total_negative
+            },
+            'thresholds': {}
+        }
+        
+        print(f"\n🔍 Analysis by Minimum Line Count:")
+        print(f"{'Threshold':<10} {'Total':<8} {'Positive':<10} {'Negative':<10} {'Pos %':<8} {'Retained %':<12}")
+        print(f"{'-'*70}")
+        
+        for threshold in thresholds:
+            # Filter functions by line count threshold
+            filtered_functions = [f for f in all_functions if f['lines'] >= threshold]
+            
+            filtered_total = len(filtered_functions)
+            filtered_positive = len([f for f in filtered_functions if f['label'] == 'POSITIVE'])
+            filtered_negative = len([f for f in filtered_functions if f['label'] == 'NEGATIVE'])
+            
+            # Calculate percentages
+            pos_percentage = (filtered_positive / filtered_total * 100) if filtered_total > 0 else 0
+            retention_rate = (filtered_total / total_functions * 100) if total_functions > 0 else 0
+            
+            print(f"{threshold:<10} {filtered_total:<8,} {filtered_positive:<10,} {filtered_negative:<10,} {pos_percentage:<8.1f} {retention_rate:<12.1f}")
+            
+            analysis_results['thresholds'][threshold] = {
+                'total': filtered_total,
+                'positive': filtered_positive,
+                'negative': filtered_negative,
+                'pos_percentage': pos_percentage,
+                'retention_rate': retention_rate
+            }
+        
+        # Show detailed breakdown
+        print(f"\n📈 Detailed Analysis:")
+        for threshold in thresholds:
+            data = analysis_results['thresholds'][threshold]
+            pos_retained = (data['positive'] / total_positive * 100) if total_positive > 0 else 0
+            neg_retained = (data['negative'] / total_negative * 100) if total_negative > 0 else 0
+            
+            print(f"\n   🔹 Minimum {threshold} lines:")
+            print(f"      Functions retained: {data['total']:,} / {total_functions:,} ({data['retention_rate']:.1f}%)")
+            print(f"      Positive retained: {data['positive']:,} / {total_positive:,} ({pos_retained:.1f}%)")
+            print(f"      Negative retained: {data['negative']:,} / {total_negative:,} ({neg_retained:.1f}%)")
+            print(f"      New positive ratio: {data['pos_percentage']:.1f}%")
+        
+        return analysis_results
+
     def parse_test_case(self, test_case_id: str, file_paths: List[str]) -> Dict:
         """
         Parse a complete test case and label functions.
