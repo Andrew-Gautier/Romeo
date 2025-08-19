@@ -59,10 +59,10 @@ def main():
     # Parse the XML file
     xml_file_path = 'C:\\Users\\Andrew\\OneDrive\\Documents\\Juliet Java 1.3\\manifest.xml'
     info_list = parse_xml(xml_file_path)
-    
+
     # Create a dictionary from info_list
     info_dict = {os.path.basename(codepath): (cwe, start_line) for cwe, start_line, codepath in info_list}
-
+    
     print("Starting loop over subfolders")
     for subfolder in new_folder.subfolders:
         print(f"Processing subfolder: {subfolder.folder_name}")

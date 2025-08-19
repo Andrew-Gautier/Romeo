@@ -48,18 +48,21 @@ Step-by-Step Parsing Strategy
             nextFunction(data); // Trivial wrapper → exclude
         }
 
-    Parsers:
 
-        C/C++: Use pycparser or Clang’s Python bindings.
+    What needs to be done:
+        
+        Functions need to be labeled from lines given in manifest file. 
+        Trivial wrappers need to be thrown out, also functions below a certain line count.
+        Comments need to be removed (without messing up line labels) using rust comment parser. 
 
-        Java/C#: Use javalang or ANTLR grammars.
 
-    Pipeline:
+    Want to have a database of these functions with the following information per each function:
+        |Vulnerable or Secure: bool | Line containing flaw (if present n/a otherwise): int | # of lines: int | language: enum | CWE: enum | 
 
-        Group files by test case.
+    Immediate focus is Juliet Java + C/Cpp test cases. 
+    Scope of this project is to add three additional sources: 
+    Juliet C#, Bugs in Py, and an external C/Cpp source. 
 
-        Parse functions, skipping trivial wrappers.
-
-        Label functions using naming rules.
-
-        Extract lines and propagate labels.
+8-19-25
+Java and C/cpp done
+Next 
