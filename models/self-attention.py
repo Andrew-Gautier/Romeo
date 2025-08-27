@@ -7,7 +7,6 @@ from torchmetrics.classification import BinaryAUROC
 from torch.optim import Adam
 import tqdm
 import os
-import numpy
 
 BATCH_SIZE = 40
 LEARNING_RATE = 0.001
@@ -24,16 +23,15 @@ cuda_available = torch.cuda.is_available()
 print("CUDA Available:", cuda_available)
 device = torch.device('cuda')
 
-train_sequences_tensor = torch.load("vlw2_train_sequences_tensor.pt")
-train_labels = torch.load("vlw2_train_labels.pt") 
+train_sequences_tensor = torch.load("cwe_train_sequences.pt").long()
+train_labels = torch.load("cwe_train_labels.pt") 
 train_dataset = TensorDataset(train_sequences_tensor, train_labels)
 train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE, shuffle = True, drop_last = True)
 
-test_sequences_tensor = torch.load('vlw2_test_sequences_tensor.pt')
-test_labels = torch.load('vlw2_test_labels.pt') 
-test_dataset = TensorDataset(test_sequences_tensor, test_labels)
-test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = True, drop_last = True)
-
+val_sequences_tensor = torch.load('cwe_val_sequences.pt').long()
+val_labels = torch.load('cwe_val_labels.pt') 
+val_dataset = TensorDataset(val_sequences_tensor, val_labels)
+val_loader = DataLoader(val_dataset, batch_size = BATCH_SIZE, shuffle = True, drop_last = True)
 
 
 torch.manual_seed(691)
@@ -58,7 +56,7 @@ def save_checkpoint(state, epoch, checkpoint_path="/attention_check_point_path")
 # Instead of a final layer of max_pooling or mean pooling the final dimension, this model uses self attention. 
 
 class LSTMClassifier(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, n_layers, batch_first, bidirectional, dropout, pretrained_weights, batch_size, sentence_length):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, n_layers, batch_first, bidirectional, dropout, pretrained_weights):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim).to(device)
         self.rnn = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, bidirectional=bidirectional, dropout=dropout, batch_first=batch_first).to(device)
@@ -71,8 +69,12 @@ class LSTMClassifier(nn.Module):
     def forward(self, text):
         # text = [batch size, sentence length]
         text = text.to(device)
-        batch_size, sentence_length, num_sentences = text.size()
-        text = text.view(batch_size, sentence_length * num_sentences)
+        if text.dim() == 3:
+            batch_size, sentence_length, num_sentences = text.size()
+            text = text.view(batch_size, -1)
+        else:
+            batch_size = text.size(0)
+        
         embedded = self.dropout(self.embedding(text))
         
         #print(f"Shape after embedding: {embeddefsfsfd.shape}")
@@ -103,9 +105,7 @@ model = LSTMClassifier(
     batch_first=True,
     bidirectional=True,
     dropout=0.5,
-    pretrained_weights=word_vectors,
-    batch_size=BATCH_SIZE,
-    sentence_length=SENTENCE_LENGTH
+    pretrained_weights=word_vectors
 )
 print(model)
 
@@ -193,7 +193,7 @@ valid_aurocs = []
 
 for epoch in range(N_EPOCHS):
     train_loss = train(model, train_loader, optimizer, criterion, epoch, device)
-    valid_loss, valid_auroc = evaluate(model, test_loader, criterion, device)
+    valid_loss, valid_auroc = evaluate(model, val_loader, criterion, device)
     train_losses.append(train_loss)
     valid_losses.append(valid_loss)
     valid_aurocs.append(valid_auroc)
