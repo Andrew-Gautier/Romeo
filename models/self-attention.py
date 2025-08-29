@@ -12,7 +12,7 @@ BATCH_SIZE = 40
 LEARNING_RATE = 0.001
 EPOCHS = 20
 LSTM_NODES = 256
-NUM_SENTENCES = 40
+NUM_SENTENCES = 50
 SENTENCE_LENGTH = 98
 VOCAB_SIZE = 49152
 EMBEDDING_SIZE = 4096
@@ -31,8 +31,12 @@ train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE, shuffle = True
 val_sequences_tensor = torch.load('cwe_val_sequences.pt').long()
 val_labels = torch.load('cwe_val_labels.pt') 
 val_dataset = TensorDataset(val_sequences_tensor, val_labels)
-val_loader = DataLoader(val_dataset, batch_size = BATCH_SIZE, shuffle = True, drop_last = True)
+val_loader = DataLoader(val_dataset, batch_size = BATCH_SIZE, shuffle = False, drop_last = False)
 
+test_sequences_tensor = torch.load("cwe_test_sequences.pt").long()
+test_labels = torch.load("cwe_test_labels.pt") 
+test_dataset = TensorDataset(test_sequences_tensor, test_labels)
+test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = False, drop_last = False)
 
 torch.manual_seed(691)
 
@@ -100,7 +104,7 @@ model = LSTMClassifier(
     vocab_size=VOCAB_SIZE,
     embedding_dim=EMBEDDING_SIZE,  
     hidden_dim=LSTM_NODES,
-    output_dim=40,  
+    output_dim=50,  
     n_layers=2,
     batch_first=True,
     bidirectional=True,
@@ -129,8 +133,8 @@ def train(model, iterator, optimizer, criterion, epoch, device, checkpoint_path=
         optimizer.zero_grad()
         predictions = model(batch_sequences)
         
-        predictions = predictions.view(-1, 40).float()  # Flatten if necessary
-        batch_labels = batch_labels.view(-1, 40).float()  # Ensure labels are correctly shaped
+        predictions = predictions.view(-1, 50).float()  # Flatten if necessary
+        batch_labels = batch_labels.view(-1, 50).float()  # Ensure labels are correctly shaped
         
         loss = criterion(predictions, batch_labels)
         loss.backward()
@@ -158,8 +162,8 @@ def evaluate(model, iterator, criterion, device):
             batch_sequences, batch_labels = batch_sequences.to(device), batch_labels.to(device)
             
             predictions = model(batch_sequences)
-            predictions = predictions.view(-1, 40).float()  # Flatten if necessary
-            batch_labels = batch_labels.view(-1, 40).float()  # Ensure labels are correctly shaped
+            predictions = predictions.view(-1, 50).float()  # Flatten if necessary
+            batch_labels = batch_labels.view(-1, 50).float()  # Ensure labels are correctly shaped
             
             probabilities = torch.sigmoid(predictions)  # Convert logits to probabilities
             
@@ -230,3 +234,26 @@ plt.ylim(0.5, 1.0)  # Set the y-axis to scale between 0.5 and 1
 plt.xlim(0, 20)  # Set the x-axis to scale between 0 and 20
 plt.savefig('attention_auroc_plot.png')
 plt.close()
+
+# Evaluate the model on the test dataset
+print("\n--- Test Set Evaluation ---")
+test_loss, test_auroc = evaluate(model, test_loader, criterion, device)
+print(f'Test Loss: {test_loss:.3f}, Test AUROC: {test_auroc:.3f}')
+
+# Save the final model
+final_model_path = 'self_attention_final_model.pt'
+torch.save({
+    'model_state_dict': model.state_dict(),
+    'test_loss': test_loss,
+    'test_auroc': test_auroc,
+    'config': {
+        'vocab_size': VOCAB_SIZE,
+        'embedding_dim': EMBEDDING_SIZE,
+        'hidden_dim': LSTM_NODES,
+        'output_dim': 50,
+        'n_layers': 2,
+        'bidirectional': True,
+        'dropout': 0.5,
+    }
+}, final_model_path)
+print(f'Model saved to {final_model_path}')
