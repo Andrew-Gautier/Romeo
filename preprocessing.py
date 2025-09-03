@@ -10,9 +10,9 @@ from transformers import AutoTokenizer
 import numpy as np
 
 # Constants
-MAX_FUNCTION_LINES = 50
+MAX_FUNCTION_LINES = 60
 MIN_FUNCTION_LINES = 10
-MAX_SEQ_LENGTH = 98
+MAX_SEQ_LENGTH = 64
 
 def pad_sequences(sequences, maxlen, padding='post', value=0):
     """Pads sequences to the same length."""
@@ -353,19 +353,3 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=5000, ba
 print("Preprocessing functions defined successfully!")
 
 
-### preprocessing workflow ###
-# from preprocessing import preprocess_data
-# from transformers import AutoTokenizer
-
-# tokenizer = AutoTokenizer.from_pretrained("aiXcoder/aixcoder-7b-base")
-# stats = preprocess_data(
-#     c_db_path="c_10+.db",
-#     java_db_path="java_10+.db",
-#     tokenizer=tokenizer,
-#     limit_per_class=5000,
-#     balance_classes=True,
-#     random_state=42,
-#     output_dir="tensors_run2"
-# )
-
-# print(stats)
