@@ -1,10 +1,3 @@
 .venv
 __pycache__/
-cwe_single_sample_sequence.pt
-cwe_single_sample_label.pt
-cwe_test_sequences.pt
-cwe_test_labels.pt
-cwe_val_sequences.pt
-cwe_val_labels.pt
-cwe_train_sequences.pt
-cwe_train_labels.pt
+tensors_run0/

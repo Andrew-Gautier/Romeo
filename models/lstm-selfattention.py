@@ -57,7 +57,6 @@ def save_checkpoint(state, epoch, checkpoint_path="/attention_check_point_path")
     filename = os.path.join(checkpoint_path, f"checkpoint_epoch_{epoch}.pth")
     torch.save(state, filename)
 
-# Instead of a final layer of max_pooling or mean pooling the final dimension, this model uses self attention. 
 
 class LSTMClassifier(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, n_layers, batch_first, bidirectional, dropout, pretrained_weights):
