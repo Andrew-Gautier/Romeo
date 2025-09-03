@@ -70,10 +70,10 @@ class MultiHeadSelfAttention(nn.Module):
             self.head_dim * heads == embed_size
         ), "Embedding size needs to be divisible by heads"
         
-        self.values = nn.Linear(self.head_dim, self.head_dim, bias=False)
-        self.keys = nn.Linear(self.head_dim, self.head_dim, bias=False)
-        self.queries = nn.Linear(self.head_dim, self.head_dim, bias=False)
-        self.fc_out = nn.Linear(heads * self.head_dim, embed_size)
+        self.values = nn.Linear(self.head_dim, self.head_dim, bias=False).to(device)
+        self.keys = nn.Linear(self.head_dim, self.head_dim, bias=False).to(device)
+        self.queries = nn.Linear(self.head_dim, self.head_dim, bias=False).to(device)
+        self.fc_out = nn.Linear(heads * self.head_dim, embed_size).to(device)
         
     def forward(self, values, keys, query, mask):
         N = query.shape[0]
@@ -106,16 +106,16 @@ class TransformerBlock(nn.Module):
     def __init__(self, embed_size, heads, dropout, forward_expansion):
         super(TransformerBlock, self).__init__()
         self.attention = MultiHeadSelfAttention(embed_size, heads)
-        self.norm1 = nn.LayerNorm(embed_size)
-        self.norm2 = nn.LayerNorm(embed_size)
+        self.norm1 = nn.LayerNorm(embed_size).to(device)
+        self.norm2 = nn.LayerNorm(embed_size).to(device)
         
         self.feed_forward = nn.Sequential(
-            nn.Linear(embed_size, forward_expansion * embed_size),
+            nn.Linear(embed_size, forward_expansion * embed_size).to(device),
             nn.ReLU(),
-            nn.Linear(forward_expansion * embed_size, embed_size),
+            nn.Linear(forward_expansion * embed_size, embed_size).to(device),
         )
         
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout).to(device)
         
     def forward(self, value, key, query, mask):
         attention, attention_weights = self.attention(value, key, query, mask)
@@ -155,24 +155,59 @@ class SelfAttentionClassifier(nn.Module):
         
     def forward(self, text):
         text = text.to(device)
-        batch_size, seq_len = text.shape
+        # Print shape for debugging
+        print(f"Input tensor shape: {text.shape}")
         
-        # Embedding + positional encoding
-        embedded = self.embedding(text)  # [batch_size, seq_len, embedding_dim]
-        embedded += self.position_encoding[:, :seq_len, :]
-        embedded = self.dropout(embedded)
-        
-        # Self-attention (no mask for classification tasks)
-        mask = None
-        x = embedded
-        attention_weights = []
-        
-        for layer in self.layers:
-            x, weights = layer(x, x, x, mask)
-            attention_weights.append(weights)
-        
-        # Global average pooling
-        x = torch.mean(x, dim=1)  # [batch_size, embedding_dim]
+        # Get batch size and reshape for processing
+        if len(text.shape) == 3:  # If shape is [batch_size, num_sentences, sentence_length]
+            batch_size, num_sentences, seq_len = text.shape
+            # Flatten the first two dimensions
+            flattened_text = text.reshape(-1, seq_len)
+            
+            # Embedding + positional encoding
+            embedded = self.embedding(flattened_text)  # [batch_size*num_sentences, seq_len, embedding_dim]
+            embedded = embedded + self.position_encoding[:, :seq_len, :].to(device)
+            embedded = self.dropout(embedded)
+            
+            # Self-attention (no mask for classification tasks)
+            mask = None
+            x = embedded
+            attention_weights = []
+            
+            for layer in self.layers:
+                x, weights = layer(x, x, x, mask)
+                attention_weights.append(weights)
+            
+            # Global average pooling
+            x = torch.mean(x, dim=1)  # [batch_size*num_sentences, embedding_dim]
+            
+            # Reshape back to [batch_size, num_sentences, embedding_dim]
+            x = x.view(batch_size, num_sentences, -1)
+            
+            # Average across sentences to get one embedding per batch item
+            x = torch.mean(x, dim=1)  # [batch_size, embedding_dim]
+            
+        elif len(text.shape) == 2:  # If shape is [batch_size, seq_len]
+            batch_size, seq_len = text.shape
+            
+            # Embedding + positional encoding
+            embedded = self.embedding(text)  # [batch_size, seq_len, embedding_dim]
+            embedded = embedded + self.position_encoding[:, :seq_len, :].to(device)
+            embedded = self.dropout(embedded)
+            
+            # Self-attention (no mask for classification tasks)
+            mask = None
+            x = embedded
+            attention_weights = []
+            
+            for layer in self.layers:
+                x, weights = layer(x, x, x, mask)
+                attention_weights.append(weights)
+            
+            # Global average pooling
+            x = torch.mean(x, dim=1)  # [batch_size, embedding_dim]
+        else:
+            raise ValueError(f"Unexpected input shape: {text.shape}")
         
         # Final classification layer
         output = self.fc_out(x)
@@ -189,7 +224,8 @@ model = SelfAttentionClassifier(
     num_layers=2,
     dropout=0.1,
     pretrained_weights=word_vectors
-)
+).to(device)
+
 print(model)
 
 model.eval()
@@ -197,7 +233,8 @@ model.eval()
 with torch.no_grad():
     # Get the first batch of data from the training loader
     batch_sequences, batch_labels = next(iter(train_loader))
-        
+    print(f"Batch sequences shape: {batch_sequences.shape}")
+    print(f"Batch labels shape: {batch_labels.shape}")    
     # Pass the batch of sequences through the model
     outputs = model(batch_sequences).to(device)
     

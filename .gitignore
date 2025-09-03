@@ -1,4 +1,3 @@
 .venv
 __pycache__/
-tensors_run0/
-tensors_run1/
+tensors_run*/
