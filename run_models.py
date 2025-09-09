@@ -11,8 +11,9 @@ from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 from transformer_model import SelfAttentionClassifier
 
+NUM_SENTENCES = 60
 DEFAULT_CONFIG = {
-    "batch_size": 10,
+    "batch_size": 32,
     "learning_rate": 0.001,
     "epochs": 20,
     "attention_heads": 8,
@@ -41,29 +42,29 @@ def load_data(config):
     batch_size = config["batch_size"]
     
     # Load training data
-    train_sequences_tensor = torch.load("tensors_run0/cwe_train_sequences.pt").long()
-    train_labels = torch.load("tensors_run0/cwe_train_labels.pt") 
+    train_sequences_tensor = torch.load("tensors_run0/cwe_train_sequences.pt").long().to(device)
+    train_labels = torch.load("tensors_run0/cwe_train_labels.pt").to(device)
     train_dataset = TensorDataset(train_sequences_tensor, train_labels)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, pin_memory=False)
     
     # Load validation data
-    val_sequences_tensor = torch.load('tensors_run0/cwe_val_sequences.pt').long()
-    val_labels = torch.load('tensors_run0/cwe_val_labels.pt') 
+    val_sequences_tensor = torch.load('tensors_run0/cwe_val_sequences.pt').long().to(device)
+    val_labels = torch.load('tensors_run0/cwe_val_labels.pt').to(device)
     val_dataset = TensorDataset(val_sequences_tensor, val_labels)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
-    
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=False)
+
     # Load test data
-    test_sequences_tensor = torch.load("tensors_run0/cwe_test_sequences.pt").long()
-    test_labels = torch.load("tensors_run0/cwe_test_labels.pt") 
+    test_sequences_tensor = torch.load("tensors_run0/cwe_test_sequences.pt").long().to(device)
+    test_labels = torch.load("tensors_run0/cwe_test_labels.pt").to(device)
     test_dataset = TensorDataset(test_sequences_tensor, test_labels)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=False)
     
     return train_loader, val_loader, test_loader
 
 def load_word_vectors():
     """Load pretrained word vectors"""
     try:
-        pretrained_weights = torch.load('aix3-7b-base (1).pt')
+        pretrained_weights = torch.load('aix3-7b-base (1).pt', map_location=device)
         print("Weights loaded successfully.")
         # Extract the word vectors
         word_vectors = pretrained_weights['tok_embeddings.weight']
@@ -100,10 +101,10 @@ def train_epoch(model, dataloader, optimizer, criterion, device):
         
         optimizer.zero_grad()
         predictions = model(batch_sequences)
-        
-        predictions = predictions.view(-1, 50).float()  # Flatten if necessary
-        batch_labels = batch_labels.view(-1, 50).float()  # Ensure labels are correctly shaped
-        
+
+        predictions = predictions.view(-1, NUM_SENTENCES).float()  # Flatten if necessary
+        batch_labels = batch_labels.view(-1, NUM_SENTENCES).float()  # Ensure labels are correctly shaped
+
         loss = criterion(predictions, batch_labels)
         loss.backward()
         optimizer.step()
@@ -123,9 +124,9 @@ def evaluate_model(model, dataloader, criterion, device):
             batch_sequences, batch_labels = batch_sequences.to(device), batch_labels.to(device)
             
             predictions = model(batch_sequences)
-            predictions = predictions.view(-1, 50).float()  # Flatten if necessary
-            batch_labels = batch_labels.view(-1, 50).float()  # Ensure labels are correctly shaped
-            
+            predictions = predictions.view(-1, NUM_SENTENCES).float()  # Flatten if necessary
+            batch_labels = batch_labels.view(-1, NUM_SENTENCES).float()  # Ensure labels are correctly shaped
+
             # Update AUROC computation
             auroc.update(predictions, batch_labels.int())
             
@@ -138,10 +139,9 @@ def evaluate_model(model, dataloader, criterion, device):
     return epoch_loss / len(dataloader), auroc_score.item()
     
 def train_model(config, checkpoint_dir=None, report_to_tune=True):
-    """Main training function that can be used with Ray Tune"""
     # Set seed for reproducibility
     torch.manual_seed(config.get("seed", 691))
-    
+    torch.cuda.manual_seed_all(config.get("seed", 691))
     # Generate a unique run ID
     run_id = generate_unique_id()
     
@@ -280,7 +280,7 @@ def run_hyperparameter_tuning():
         "attention_heads": tune.choice([4, 8, 16]),
         "attention_dim": tune.choice([128, 256, 512]),
         "num_layers": tune.choice([1, 2, 3]),
-        "dropout": tune.uniform(0.0, 0.3, 0.5),
+        "dropout": tune.choice([0.0, 0.1, 0.3, 0.5]),
         # Fixed parameters
         "num_sentences": 60,
         "sentence_length": 64,
