@@ -10,6 +10,8 @@ from transformers import AutoTokenizer
 import numpy as np
 
 # Constants
+CVE_ID = dict(enumerate(range(1000)))  # Maps integer indices to CVE IDs
+LANGUAGES = ['c', 'java']
 MAX_FUNCTION_LINES = 60
 MIN_FUNCTION_LINES = 10
 MAX_SEQ_LENGTH = 64
@@ -92,12 +94,13 @@ def display_vulnerable_lines(db_path, num_samples=5, min_lines=MIN_FUNCTION_LINE
         print(f"Error displaying vulnerable lines: {str(e)}")
 
 # Database functions
-def load_data_from_db(db_path, limit_per_class=None, balance_classes=False, min_lines=MIN_FUNCTION_LINES, max_lines=MAX_FUNCTION_LINES):
+def load_data_from_db(db_path, language, limit_per_class=None, balance_classes=False, min_lines=MIN_FUNCTION_LINES, max_lines=MAX_FUNCTION_LINES):
     """
     Load function data from a database with optional class balancing.
     
     Args:
         db_path (str): Path to the SQLite database
+        language (str): The programming language ('c' or 'java')
         limit_per_class (int, optional): Maximum number of samples per class
         balance_classes (bool): Whether to balance vulnerable and non-vulnerable classes
         min_lines (int): Minimum number of lines a function should have
@@ -241,7 +244,8 @@ def tokenize_and_pad(data, tokenizer, max_samples=None, max_seq_length=MAX_SEQ_L
     return torch.tensor(np.array(sequences))
 
 def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=5000, balance_classes=True, random_state=42, 
-                   max_function_lines=MAX_FUNCTION_LINES, max_seq_length=MAX_SEQ_LENGTH, output_dir='tensors'):
+                   max_function_lines=MAX_FUNCTION_LINES, max_seq_length=MAX_SEQ_LENGTH, output_dir='tensors', 
+                   seed_id=None):
     """
     Complete preprocessing workflow: load data, create labels, split, tokenize and save tensors.
     
@@ -255,11 +259,25 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=5000, ba
         max_function_lines (int): Maximum number of lines per function
         max_seq_length (int): Maximum sequence length for each line
         output_dir (str): Directory to save output tensors
+        seed_id (int, optional): Manual seed ID to identify the specific data split
         
     Returns:
         dict: Statistics about the preprocessing operation
     """
     import os
+    import datetime
+    
+    # Generate timestamp for unique folder naming
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Add seed ID to folder name if provided
+    if seed_id is not None:
+        folder_name = f"{timestamp}_seed{seed_id}"
+    else:
+        folder_name = timestamp
+    
+    # Create the output directory with timestamp
+    output_dir = os.path.join(output_dir, folder_name)
     
     # Ensure output directory exists
     if not os.path.exists(output_dir):
@@ -268,12 +286,12 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=5000, ba
     # Step 1: Load data from databases with class balancing
     print("Loading data from databases...")
     c_funcs, c_vuln_count, c_non_vuln_count = load_data_from_db(
-        c_db_path, limit_per_class=limit_per_class, balance_classes=balance_classes, 
+        c_db_path, language='c', limit_per_class=limit_per_class, balance_classes=balance_classes, 
         max_lines=max_function_lines
     )
     
     java_funcs, java_vuln_count, java_non_vuln_count = load_data_from_db(
-        java_db_path, limit_per_class=limit_per_class, balance_classes=balance_classes,
+        java_db_path, language='java', limit_per_class=limit_per_class, balance_classes=balance_classes,
         max_lines=max_function_lines
     )
     
@@ -282,6 +300,12 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=5000, ba
     
     # Combine data and create labels
     all_funcs = c_funcs + java_funcs
+    
+    # Create language identifiers for each function
+    c_identifiers = ['c'] * len(c_funcs)
+    java_identifiers = ['java'] * len(java_funcs)
+    language_identifiers = c_identifiers + java_identifiers
+    
     data, labels, vuln_count = create_labels(all_funcs, max_lines=max_function_lines)
     
     # Quick check of positive and negative samples in the dataset
@@ -292,17 +316,23 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=5000, ba
     print(f"Negative samples (without vulnerability): {neg_samples} ({neg_samples/len(labels)*100:.2f}%)")
     print(f"Positive:Negative ratio = 1:{neg_samples/pos_samples:.2f}" if pos_samples > 0 else "No positive samples found")
     
+    print(f"\nUsing seed: {seed_id if seed_id is not None else random_state} for data splitting")
+    
     # Step 2: Split the data
-    train_data, temp_data, train_labels, temp_labels = train_test_split(
-        data, labels, test_size=0.3, random_state=random_state, 
+    # Use the provided random_state for reproducibility
+    actual_seed = seed_id if seed_id is not None else random_state
+    
+    train_data, temp_data, train_labels, temp_labels, train_langs, temp_langs = train_test_split(
+        data, labels, language_identifiers, test_size=0.3, random_state=actual_seed, 
         stratify=[1 if torch.sum(l) > 0 else 0 for l in labels]
     )
     
-    val_data, test_data, val_labels, test_labels = train_test_split(
-        temp_data, temp_labels, test_size=0.33, random_state=random_state
+    val_data, test_data, val_labels, test_labels, val_langs, test_langs = train_test_split(
+        temp_data, temp_labels, temp_langs, test_size=0.33, random_state=actual_seed
     )
     
     print(f"Train: {len(train_data)}, Validation: {len(val_data)}, Test: {len(test_data)} samples")
+    print(f"Using seed: {actual_seed} for data splitting")
     
     # Check class distribution in splits
     train_pos = sum(1 for l in train_labels if torch.sum(l) > 0)
@@ -327,14 +357,131 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=5000, ba
     
     # Step 4: Save tensors
     print("Saving tensors...")
-    torch.save(train_sequences, f'{output_dir}/cwe_train_sequences.pt')
-    torch.save(train_labels_tensor, f'{output_dir}/cwe_train_labels.pt')
-    torch.save(val_sequences, f'{output_dir}/cwe_val_sequences.pt')
-    torch.save(val_labels_tensor, f'{output_dir}/cwe_val_labels.pt')
-    torch.save(test_sequences, f'{output_dir}/cwe_test_sequences.pt')
-    torch.save(test_labels_tensor, f'{output_dir}/cwe_test_labels.pt')
+    
+    # Create language-specific output folders
+    for lang in LANGUAGES:
+        lang_dir = f'{output_dir}/{lang}'
+        if not os.path.exists(lang_dir):
+            os.makedirs(lang_dir)
+    
+    # Create splits folder for combined data
+    splits_dir = f'{output_dir}/splits'
+    if not os.path.exists(splits_dir):
+        os.makedirs(splits_dir)
+            
+    # Save the combined tensors
+    torch.save(train_sequences, f'{splits_dir}/cwe_train_sequences.pt')
+    torch.save(train_labels_tensor, f'{splits_dir}/cwe_train_labels.pt')
+    torch.save(train_langs, f'{splits_dir}/cwe_train_languages.pt')
+    
+    torch.save(val_sequences, f'{splits_dir}/cwe_val_sequences.pt')
+    torch.save(val_labels_tensor, f'{splits_dir}/cwe_val_labels.pt')
+    torch.save(val_langs, f'{splits_dir}/cwe_val_languages.pt')
+    
+    torch.save(test_sequences, f'{splits_dir}/cwe_test_sequences.pt')
+    torch.save(test_labels_tensor, f'{splits_dir}/cwe_test_labels.pt')
+    torch.save(test_langs, f'{splits_dir}/cwe_test_languages.pt')
+    
+    # Now create language-specific splits
+    for lang_idx, lang in enumerate(LANGUAGES):
+        # Filter data by language
+        train_lang_indices = [i for i, l in enumerate(train_langs) if l == lang]
+        val_lang_indices = [i for i, l in enumerate(val_langs) if l == lang]
+        test_lang_indices = [i for i, l in enumerate(test_langs) if l == lang]
+        
+        # Extract language-specific data
+        if train_lang_indices:
+            train_lang_sequences = train_sequences[train_lang_indices]
+            train_lang_labels = train_labels_tensor[train_lang_indices]
+            
+            # Save language-specific tensors
+            torch.save(train_lang_sequences, f'{output_dir}/{lang}/train_sequences.pt')
+            torch.save(train_lang_labels, f'{output_dir}/{lang}/train_labels.pt')
+        
+        if val_lang_indices:
+            val_lang_sequences = val_sequences[val_lang_indices]
+            val_lang_labels = val_labels_tensor[val_lang_indices]
+            
+            torch.save(val_lang_sequences, f'{output_dir}/{lang}/val_sequences.pt')
+            torch.save(val_lang_labels, f'{output_dir}/{lang}/val_labels.pt')
+        
+        if test_lang_indices:
+            test_lang_sequences = test_sequences[test_lang_indices]
+            test_lang_labels = test_labels_tensor[test_lang_indices]
+            
+            torch.save(test_lang_sequences, f'{output_dir}/{lang}/test_sequences.pt')
+            torch.save(test_lang_labels, f'{output_dir}/{lang}/test_labels.pt')
+        
+        print(f"Saved {lang} specific tensors")
+    
+    # Save global information
+    
+    # Also save language information and CVE_ID mapping
+    torch.save(LANGUAGES, f'{output_dir}/languages.pt')
+    torch.save(list(CVE_ID), f'{output_dir}/cve_mapping.pt')
+    
+    # Save metadata about this preprocessing run
+    metadata = {
+        'timestamp': datetime.datetime.now().isoformat(),
+        'seed': actual_seed,
+        'balance_classes': balance_classes,
+        'limit_per_class': limit_per_class,
+        'max_function_lines': max_function_lines,
+        'max_seq_length': max_seq_length,
+        'c_database': c_db_path,
+        'java_database': java_db_path,
+        'stats': {
+            'c_vuln_count': c_vuln_count,
+            'c_non_vuln_count': c_non_vuln_count,
+            'java_vuln_count': java_vuln_count,
+            'java_non_vuln_count': java_non_vuln_count,
+            'total_samples': len(labels),
+            'train_size': len(train_data),
+            'val_size': len(val_data),
+            'test_size': len(test_data),
+            'train_positive': train_pos,
+            'val_positive': val_pos,
+            'test_positive': test_pos,
+        }
+    }
+    
+    # Save metadata as JSON
+    import json
+    with open(f'{output_dir}/metadata.json', 'w') as f:
+        json.dump(metadata, f, indent=2)
     
     print("Dataset creation complete!")
+    
+    # Generate statistics for each language
+    lang_stats = {}
+    for lang in LANGUAGES:
+        # Count samples by language
+        train_lang_count = sum(1 for l in train_langs if l == lang)
+        val_lang_count = sum(1 for l in val_langs if l == lang)
+        test_lang_count = sum(1 for l in test_langs if l == lang)
+        
+        # Count positive samples by language
+        train_lang_indices = [i for i, l in enumerate(train_langs) if l == lang]
+        val_lang_indices = [i for i, l in enumerate(val_langs) if l == lang]
+        test_lang_indices = [i for i, l in enumerate(test_langs) if l == lang]
+        
+        train_lang_pos = sum(1 for i in train_lang_indices if torch.sum(train_labels[i]) > 0)
+        val_lang_pos = sum(1 for i in val_lang_indices if torch.sum(val_labels[i]) > 0)
+        test_lang_pos = sum(1 for i in test_lang_indices if torch.sum(test_labels[i]) > 0)
+        
+        lang_stats[lang] = {
+            'train_total': train_lang_count,
+            'val_total': val_lang_count, 
+            'test_total': test_lang_count,
+            'train_positive': train_lang_pos,
+            'val_positive': val_lang_pos,
+            'test_positive': test_lang_pos
+        }
+        
+        print(f"\n{lang.upper()} specific statistics:")
+        print(f"Train: {train_lang_pos}/{train_lang_count} positive ({train_lang_pos/train_lang_count*100:.2f}% if positive)")
+        print(f"Validation: {val_lang_pos}/{val_lang_count} positive ({val_lang_pos/val_lang_count*100:.2f}% if positive)")
+        print(f"Test: {test_lang_pos}/{test_lang_count} positive ({test_lang_pos/test_lang_count*100:.2f}% if positive)")
     
     # Return statistics
     return {
@@ -347,7 +494,10 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=5000, ba
             'train_size': len(train_data),
             'val_size': len(val_data),
             'test_size': len(test_data)
-        }
+        },
+        'language_splits': lang_stats,
+        'seed': actual_seed,
+        'timestamp': datetime.datetime.now().isoformat()
     }
 
 print("Preprocessing functions defined successfully!")

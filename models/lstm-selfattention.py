@@ -8,12 +8,12 @@ from torch.optim import Adam
 import tqdm
 import os
 
-BATCH_SIZE = 40
+BATCH_SIZE = 20
 LEARNING_RATE = 0.001
 EPOCHS = 20
 LSTM_NODES = 256
 NUM_SENTENCES = 50
-SENTENCE_LENGTH = 98
+SENTENCE_LENGTH = 64
 VOCAB_SIZE = 49152
 EMBEDDING_SIZE = 4096
 NUM_EPOCHS = 20
@@ -40,16 +40,17 @@ test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = False,
 
 torch.manual_seed(691)
 
-# TODO: Model checkpoints, Model saving
-try:
-    pretrained_weights = torch.load('aix3-7b-base (1).pt')
-    print("Weights loaded successfully.")
-except Exception as e:
-    print(f"Failed to load weights: {e}")
+### Commented out code for HPC loading of weights
+# try:
+#     pretrained_weights = torch.load('aix3-7b-base (1).pt')
+#     print("Weights loaded successfully.")
+# except Exception as e:
+#     print(f"Failed to load weights: {e}")
 
-# Once you've identified the key for the embeddings, you can extract them like this:
-word_vectors = pretrained_weights['tok_embeddings.weight']
-print(word_vectors.shape)
+### Parse word embeddings from the loaded weights 
+#
+# word_vectors = pretrained_weights['tok_embeddings.weight']
+# print(word_vectors.shape)
 
 def save_checkpoint(state, epoch, checkpoint_path="/attention_check_point_path"):
     if not os.path.exists(checkpoint_path):
@@ -108,7 +109,7 @@ model = LSTMClassifier(
     batch_first=True,
     bidirectional=True,
     dropout=0.5,
-    pretrained_weights=word_vectors
+    pretrained_weights=4096 
 )
 print(model)
 

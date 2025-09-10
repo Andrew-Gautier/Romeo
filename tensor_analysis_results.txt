@@ -1,0 +1,461 @@
+===== TENSOR SEQUENCE LENGTH ANALYSIS =====
+Total tensor files: 90
+Successfully analyzed: 90
+Skipped: 0
+Errors: 0
+
+----- MAXIMUM DIMENSIONS -----
+Max lines: 60
+Max tokens per line: 64
+
+----- DETAILED RESULTS -----
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_143537_seed45/java/test_sequences.pt
+  Shape: torch.Size([194, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_143537_seed45/java/train_sequences.pt
+  Shape: torch.Size([1469, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_143537_seed45/java/val_sequences.pt
+  Shape: torch.Size([377, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_143537_seed45/c/test_sequences.pt
+  Shape: torch.Size([1859, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_143537_seed45/c/train_sequences.pt
+  Shape: torch.Size([13040, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_143537_seed45/c/val_sequences.pt
+  Shape: torch.Size([3789, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_143537_seed45/splits/cwe_val_sequences.pt
+  Shape: torch.Size([4166, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_143537_seed45/splits/cwe_train_sequences.pt
+  Shape: torch.Size([14509, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_143537_seed45/splits/cwe_test_sequences.pt
+  Shape: torch.Size([2053, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_142211_seed45/java/test_sequences.pt
+  Shape: torch.Size([194, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_142211_seed45/java/train_sequences.pt
+  Shape: torch.Size([1469, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_142211_seed45/java/val_sequences.pt
+  Shape: torch.Size([377, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_142211_seed45/c/test_sequences.pt
+  Shape: torch.Size([1859, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_142211_seed45/c/train_sequences.pt
+  Shape: torch.Size([13040, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_142211_seed45/c/val_sequences.pt
+  Shape: torch.Size([3789, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_142211_seed45/splits/cwe_val_sequences.pt
+  Shape: torch.Size([4166, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_142211_seed45/splits/cwe_train_sequences.pt
+  Shape: torch.Size([14509, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_to_c_seed45/20250910_142211_seed45/splits/cwe_test_sequences.pt
+  Shape: torch.Size([2053, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_142200_seed44/java/test_sequences.pt
+  Shape: torch.Size([193, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_142200_seed44/java/train_sequences.pt
+  Shape: torch.Size([1423, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_142200_seed44/java/val_sequences.pt
+  Shape: torch.Size([424, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_142200_seed44/c/test_sequences.pt
+  Shape: torch.Size([1860, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_142200_seed44/c/train_sequences.pt
+  Shape: torch.Size([13086, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_142200_seed44/c/val_sequences.pt
+  Shape: torch.Size([3742, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_142200_seed44/splits/cwe_val_sequences.pt
+  Shape: torch.Size([4166, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_142200_seed44/splits/cwe_train_sequences.pt
+  Shape: torch.Size([14509, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_142200_seed44/splits/cwe_test_sequences.pt
+  Shape: torch.Size([2053, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_143525_seed44/java/test_sequences.pt
+  Shape: torch.Size([193, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_143525_seed44/java/train_sequences.pt
+  Shape: torch.Size([1423, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_143525_seed44/java/val_sequences.pt
+  Shape: torch.Size([424, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_143525_seed44/c/test_sequences.pt
+  Shape: torch.Size([1860, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_143525_seed44/c/train_sequences.pt
+  Shape: torch.Size([13086, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_143525_seed44/c/val_sequences.pt
+  Shape: torch.Size([3742, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_143525_seed44/splits/cwe_val_sequences.pt
+  Shape: torch.Size([4166, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_143525_seed44/splits/cwe_train_sequences.pt
+  Shape: torch.Size([14509, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_to_java_seed44/20250910_143525_seed44/splits/cwe_test_sequences.pt
+  Shape: torch.Size([2053, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_142137_seed42/java/test_sequences.pt
+  Shape: torch.Size([202, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_142137_seed42/java/train_sequences.pt
+  Shape: torch.Size([1427, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_142137_seed42/java/val_sequences.pt
+  Shape: torch.Size([411, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_142137_seed42/c/test_sequences.pt
+  Shape: torch.Size([1851, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_142137_seed42/c/train_sequences.pt
+  Shape: torch.Size([13082, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_142137_seed42/c/val_sequences.pt
+  Shape: torch.Size([3755, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_142137_seed42/splits/cwe_val_sequences.pt
+  Shape: torch.Size([4166, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_142137_seed42/splits/cwe_train_sequences.pt
+  Shape: torch.Size([14509, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_142137_seed42/splits/cwe_test_sequences.pt
+  Shape: torch.Size([2053, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_143502_seed42/java/test_sequences.pt
+  Shape: torch.Size([202, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_143502_seed42/java/train_sequences.pt
+  Shape: torch.Size([1427, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_143502_seed42/java/val_sequences.pt
+  Shape: torch.Size([411, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_143502_seed42/c/test_sequences.pt
+  Shape: torch.Size([1851, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_143502_seed42/c/train_sequences.pt
+  Shape: torch.Size([13082, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_143502_seed42/c/val_sequences.pt
+  Shape: torch.Size([3755, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_143502_seed42/splits/cwe_val_sequences.pt
+  Shape: torch.Size([4166, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_143502_seed42/splits/cwe_train_sequences.pt
+  Shape: torch.Size([14509, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/c_only_seed42/20250910_143502_seed42/splits/cwe_test_sequences.pt
+  Shape: torch.Size([2053, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_143548_seed46/java/test_sequences.pt
+  Shape: torch.Size([188, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_143548_seed46/java/train_sequences.pt
+  Shape: torch.Size([1452, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_143548_seed46/java/val_sequences.pt
+  Shape: torch.Size([400, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_143548_seed46/c/test_sequences.pt
+  Shape: torch.Size([1865, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_143548_seed46/c/train_sequences.pt
+  Shape: torch.Size([13057, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_143548_seed46/c/val_sequences.pt
+  Shape: torch.Size([3766, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_143548_seed46/splits/cwe_val_sequences.pt
+  Shape: torch.Size([4166, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_143548_seed46/splits/cwe_train_sequences.pt
+  Shape: torch.Size([14509, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_143548_seed46/splits/cwe_test_sequences.pt
+  Shape: torch.Size([2053, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_142223_seed46/java/test_sequences.pt
+  Shape: torch.Size([188, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_142223_seed46/java/train_sequences.pt
+  Shape: torch.Size([1452, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_142223_seed46/java/val_sequences.pt
+  Shape: torch.Size([400, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_142223_seed46/c/test_sequences.pt
+  Shape: torch.Size([1865, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_142223_seed46/c/train_sequences.pt
+  Shape: torch.Size([13057, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_142223_seed46/c/val_sequences.pt
+  Shape: torch.Size([3766, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_142223_seed46/splits/cwe_val_sequences.pt
+  Shape: torch.Size([4166, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_142223_seed46/splits/cwe_train_sequences.pt
+  Shape: torch.Size([14509, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/combined_seed46/20250910_142223_seed46/splits/cwe_test_sequences.pt
+  Shape: torch.Size([2053, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_143513_seed43/java/test_sequences.pt
+  Shape: torch.Size([174, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_143513_seed43/java/train_sequences.pt
+  Shape: torch.Size([1446, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_143513_seed43/java/val_sequences.pt
+  Shape: torch.Size([420, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_143513_seed43/c/test_sequences.pt
+  Shape: torch.Size([1879, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_143513_seed43/c/train_sequences.pt
+  Shape: torch.Size([13063, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_143513_seed43/c/val_sequences.pt
+  Shape: torch.Size([3746, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_143513_seed43/splits/cwe_val_sequences.pt
+  Shape: torch.Size([4166, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_143513_seed43/splits/cwe_train_sequences.pt
+  Shape: torch.Size([14509, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_143513_seed43/splits/cwe_test_sequences.pt
+  Shape: torch.Size([2053, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_142149_seed43/java/test_sequences.pt
+  Shape: torch.Size([174, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_142149_seed43/java/train_sequences.pt
+  Shape: torch.Size([1446, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_142149_seed43/java/val_sequences.pt
+  Shape: torch.Size([420, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_142149_seed43/c/test_sequences.pt
+  Shape: torch.Size([1879, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_142149_seed43/c/train_sequences.pt
+  Shape: torch.Size([13063, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_142149_seed43/c/val_sequences.pt
+  Shape: torch.Size([3746, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_142149_seed43/splits/cwe_val_sequences.pt
+  Shape: torch.Size([4166, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_142149_seed43/splits/cwe_train_sequences.pt
+  Shape: torch.Size([14509, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
+File: tensors/Experiment_1/language_matrix_42/java_only_seed43/20250910_142149_seed43/splits/cwe_test_sequences.pt
+  Shape: torch.Size([2053, 60, 64])
+  Max lines: 60
+  Max tokens per line: 64
+
