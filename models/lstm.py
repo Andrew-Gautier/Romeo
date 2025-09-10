@@ -7,6 +7,8 @@ from torchmetrics.classification import BinaryAUROC
 from torch.optim import Adam
 import tqdm
 import os
+import time
+from datetime import datetime, timedelta
 
 BATCH_SIZE = 20
 LEARNING_RATE = 0.001
@@ -126,6 +128,9 @@ def train(model, iterator, optimizer, criterion, epoch, device, checkpoint_path=
     epoch_loss = 0
     model.train()
     
+    # Start epoch timer
+    start_time = time.time()
+    
     for batch_sequences, batch_labels in tqdm.tqdm(iterator, desc='Training'):
         # Move data to the device
         batch_sequences, batch_labels = batch_sequences.to(device), batch_labels.to(device)
@@ -140,21 +145,29 @@ def train(model, iterator, optimizer, criterion, epoch, device, checkpoint_path=
         loss.backward()
         optimizer.step()
         epoch_loss += loss.item()
-        
+    
+    # End epoch timer
+    end_time = time.time()
+    epoch_duration = end_time - start_time
+    
     # Save checkpoint after the epoch
     save_checkpoint({
         'epoch': epoch,
         'state_dict': model.state_dict(),
         'optimizer': optimizer.state_dict(),
         'loss': epoch_loss / len(iterator),
+        'duration': epoch_duration,
     }, epoch, checkpoint_path=checkpoint_path)    
     
-    return epoch_loss / len(iterator)
+    return epoch_loss / len(iterator), epoch_duration
 
 def evaluate(model, iterator, criterion, device):
     epoch_loss = 0
     model.eval()
     auroc = BinaryAUROC().to(device)  # Initialize AUROC metric
+    
+    # Start evaluation timer
+    start_time = time.time()
 
     with torch.no_grad():
         for batch_sequences, batch_labels in tqdm.tqdm(iterator, desc='Evaluation'):
@@ -173,10 +186,14 @@ def evaluate(model, iterator, criterion, device):
             loss = criterion(predictions, batch_labels)
             epoch_loss += loss.item()
     
+    # End evaluation timer
+    end_time = time.time()
+    eval_duration = end_time - start_time
+    
     auroc_score = auroc.compute()  # Compute the final AUROC score
     auroc.reset()  # Reset AUROC metric for future use
     
-    return epoch_loss / len(iterator), auroc_score.item()
+    return epoch_loss / len(iterator), auroc_score.item(), eval_duration
 
 # MAIN TRAINING LOOP
 
@@ -195,17 +212,40 @@ train_losses = []
 valid_losses = []
 valid_aurocs = []
 
+# Store timing information
+train_times = []
+eval_times = []
+total_start_time = time.time()
+
+print(f"Training started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
 for epoch in range(N_EPOCHS):
-    train_loss = train(model, train_loader, optimizer, criterion, epoch, device)
-    valid_loss, valid_auroc = evaluate(model, val_loader, criterion, device)
+    epoch_start_time = time.time()
+    
+    train_loss, train_duration = train(model, train_loader, optimizer, criterion, epoch, device)
+    valid_loss, valid_auroc, eval_duration = evaluate(model, val_loader, criterion, device)
+    
+    epoch_total_duration = time.time() - epoch_start_time
+    
     train_losses.append(train_loss)
     valid_losses.append(valid_loss)
     valid_aurocs.append(valid_auroc)
-    print(f'Epoch: {epoch+1}, Train Loss: {train_loss:.3f}, Val. Loss: {valid_loss:.3f}, Val. AUROC: {valid_auroc:.3f}')
+    train_times.append(train_duration)
+    eval_times.append(eval_duration)
+    
+    # Format times as human-readable strings
+    train_time_str = str(timedelta(seconds=int(train_duration)))
+    eval_time_str = str(timedelta(seconds=int(eval_duration)))
+    epoch_time_str = str(timedelta(seconds=int(epoch_total_duration)))
+    total_time_str = str(timedelta(seconds=int(time.time() - total_start_time)))
+    
+    print(f'Epoch: {epoch+1}/{N_EPOCHS}, Train Loss: {train_loss:.3f}, Val. Loss: {valid_loss:.3f}, Val. AUROC: {valid_auroc:.3f}')
+    print(f'Time - Train: {train_time_str}, Eval: {eval_time_str}, Epoch: {epoch_time_str}, Total: {total_time_str}')
     
     if valid_loss < best_valid_loss:
         best_valid_loss = valid_loss
         epochs_since_improvement = 0  # Reset counter
+        print(f"New best validation loss: {valid_loss:.3f}")
     else:
         epochs_since_improvement += 1  # Increment counter
     
@@ -213,6 +253,14 @@ for epoch in range(N_EPOCHS):
     if epochs_since_improvement == 3:
         print("Stopping early due to no improvement in validation loss for 3 consecutive epochs.")
         break
+
+total_training_time = time.time() - total_start_time
+print(f"Total training time: {str(timedelta(seconds=int(total_training_time)))}")
+
+# Calculate and print average times
+avg_train_time = sum(train_times) / len(train_times)
+avg_eval_time = sum(eval_times) / len(eval_times)
+print(f"Average time per epoch - Training: {str(timedelta(seconds=int(avg_train_time)))}, Evaluation: {str(timedelta(seconds=int(avg_eval_time)))}")
 
 # Plot the training and validation loss
 plt.figure(figsize=(10, 5))
@@ -235,10 +283,22 @@ plt.xlim(0, 20)  # Set the x-axis to scale between 0 and 20
 plt.savefig('attention_auroc_plot.png')
 plt.close()
 
+# Plot training and evaluation times
+plt.figure(figsize=(10, 5))
+plt.plot(train_times, label='Training Time (s)')
+plt.plot(eval_times, label='Evaluation Time (s)')
+plt.xlabel('Epochs')
+plt.ylabel('Time (seconds)')
+plt.legend()
+plt.savefig('attention_time_plot.png')
+plt.close()
+
 # Evaluate the model on the test dataset
 print("\n--- Test Set Evaluation ---")
-test_loss, test_auroc = evaluate(model, test_loader, criterion, device)
+test_start_time = time.time()
+test_loss, test_auroc, test_duration = evaluate(model, test_loader, criterion, device)
 print(f'Test Loss: {test_loss:.3f}, Test AUROC: {test_auroc:.3f}')
+print(f'Test evaluation time: {str(timedelta(seconds=int(test_duration)))}')
 
 # Save the final model
 final_model_path = 'self_attention_final_model.pt'
@@ -246,6 +306,11 @@ torch.save({
     'model_state_dict': model.state_dict(),
     'test_loss': test_loss,
     'test_auroc': test_auroc,
+    'training_time': total_training_time,
+    'test_time': test_duration,
+    'train_times': train_times,
+    'eval_times': eval_times,
+    'timestamp': datetime.now().isoformat(),
     'config': {
         'vocab_size': VOCAB_SIZE,
         'embedding_dim': EMBEDDING_SIZE,
