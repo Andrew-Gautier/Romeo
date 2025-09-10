@@ -3,3 +3,6 @@ __pycache__/
 tensors/
 .vscode/
 ray-packages/
+tensors_run0/
+tensors_run1/
+tensors_run2/
