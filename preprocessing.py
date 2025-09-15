@@ -10,7 +10,7 @@ from transformers import AutoTokenizer
 import numpy as np
 
 # Constants
-CVE_ID = dict(enumerate(range(1000)))  # Maps integer indices to CVE IDs
+CVE_ID = dict(enumerate(range(100000)))  # Maps integer indices to CVE IDs
 LANGUAGES = ['c', 'java']
 MAX_FUNCTION_LINES = 60
 MIN_FUNCTION_LINES = 10

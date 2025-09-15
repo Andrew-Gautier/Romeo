@@ -1,5 +1,4 @@
 """
-Generate a testing matrix of tensors for cross-language vulnerability detection.
 This script creates multiple tensor sets with different configurations:
 1. C-only training, testing on C
 2. Java-only training, testing on Java
@@ -26,7 +25,7 @@ def generate_language_matrix(base_seed=42, sample_limit=100000, balanced=True):
     
     # Load tokenizer
     print("Loading tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained('microsoft/codebert-base')
+    tokenizer = AutoTokenizer.from_pretrained("aiXcoder/aixcoder-7b-base")
     
     # Configuration matrix
     configs = [
