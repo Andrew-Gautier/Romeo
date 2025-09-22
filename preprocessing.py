@@ -12,7 +12,7 @@ import numpy as np
 # Constants
 CVE_ID = dict(enumerate(range(100000)))  # Maps integer indices to CVE IDs
 LANGUAGES = ['c', 'java']
-MAX_FUNCTION_LINES = 60
+MAX_FUNCTION_LINES = 70
 MIN_FUNCTION_LINES = 10
 MAX_SEQ_LENGTH = 64
 
@@ -370,18 +370,18 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=5000, ba
         os.makedirs(splits_dir)
             
     # Save the combined tensors
-    torch.save(train_sequences, f'{splits_dir}/cwe_train_sequences.pt')
-    torch.save(train_labels_tensor, f'{splits_dir}/cwe_train_labels.pt')
-    torch.save(train_langs, f'{splits_dir}/cwe_train_languages.pt')
-    
-    torch.save(val_sequences, f'{splits_dir}/cwe_val_sequences.pt')
-    torch.save(val_labels_tensor, f'{splits_dir}/cwe_val_labels.pt')
-    torch.save(val_langs, f'{splits_dir}/cwe_val_languages.pt')
-    
-    torch.save(test_sequences, f'{splits_dir}/cwe_test_sequences.pt')
-    torch.save(test_labels_tensor, f'{splits_dir}/cwe_test_labels.pt')
-    torch.save(test_langs, f'{splits_dir}/cwe_test_languages.pt')
-    
+    torch.save(train_sequences, f'{splits_dir}/train_sequences.pt')
+    torch.save(train_labels_tensor, f'{splits_dir}/train_labels.pt')
+    torch.save(train_langs, f'{splits_dir}/train_languages.pt')
+
+    torch.save(val_sequences, f'{splits_dir}/val_sequences.pt')
+    torch.save(val_labels_tensor, f'{splits_dir}/val_labels.pt')
+    torch.save(val_langs, f'{splits_dir}/val_languages.pt')
+
+    torch.save(test_sequences, f'{splits_dir}/test_sequences.pt')
+    torch.save(test_labels_tensor, f'{splits_dir}/test_labels.pt')
+    torch.save(test_langs, f'{splits_dir}/test_languages.pt')
+
     # Now create language-specific splits
     for lang_idx, lang in enumerate(LANGUAGES):
         # Filter data by language

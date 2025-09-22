@@ -26,7 +26,7 @@ def generate_language_matrix(base_seed=42, sample_limit=100000, balanced=True):
     # Load tokenizer
     print("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained("aiXcoder/aixcoder-7b-base")
-    
+    ###tokenizer = AutoTokenizer.from_pretrained("deepseek-ai/deepseek-coder-6.7b-base", trust_remote_code=True)
     # Configuration matrix
     configs = [
         {"name": "c_only", "desc": "C-only training and testing"},
@@ -37,7 +37,7 @@ def generate_language_matrix(base_seed=42, sample_limit=100000, balanced=True):
     ]
     
     # Base output directory
-    matrix_dir = f"tensors/Experiment_1/language_matrix_{base_seed}"
+    matrix_dir = f"tensors/Experiment_2/language_matrix_{base_seed}"
     os.makedirs(matrix_dir, exist_ok=True)
     
     # Generate each configuration
@@ -51,8 +51,8 @@ def generate_language_matrix(base_seed=42, sample_limit=100000, balanced=True):
         
         # Run preprocessing with the specific configuration
         stats = preprocessing.preprocess_data(
-            c_db_path='c_10+.db',
-            java_db_path='java_10+.db',
+            c_db_path='datasets/juliet_c_10+.db',
+            java_db_path='datasets/juliet_java_10+.db',
             tokenizer=tokenizer,
             limit_per_class=sample_limit,
             balance_classes=balanced,
@@ -61,7 +61,7 @@ def generate_language_matrix(base_seed=42, sample_limit=100000, balanced=True):
         )
         
         # Save a summary of this configuration
-        summary_file = f"{config_dir}/Experiment_1.txt"
+        summary_file = f"{config_dir}/Experiment_2.txt"
         with open(summary_file, 'w') as f:
             f.write(f"Configuration: {config['desc']}\n")
             f.write(f"Seed: {seed}\n")
