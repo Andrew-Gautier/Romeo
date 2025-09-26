@@ -12,7 +12,7 @@ import numpy as np
 # Constants
 CVE_ID = dict(enumerate(range(100000)))  # Maps integer indices to CVE IDs
 LANGUAGES = ['c', 'java']
-MAX_FUNCTION_LINES = 70
+MAX_FUNCTION_LINES = 150
 MIN_FUNCTION_LINES = 10
 MAX_SEQ_LENGTH = 64
 
@@ -243,7 +243,7 @@ def tokenize_and_pad(data, tokenizer, max_samples=None, max_seq_length=MAX_SEQ_L
     # Convert to tensor
     return torch.tensor(np.array(sequences))
 
-def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=5000, balance_classes=True, random_state=42, 
+def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, balance_classes=True, random_state=42, 
                    max_function_lines=MAX_FUNCTION_LINES, max_seq_length=MAX_SEQ_LENGTH, output_dir='tensors', 
                    seed_id=None):
     """

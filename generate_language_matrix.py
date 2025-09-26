@@ -40,7 +40,7 @@ def generate_language_matrix(base_seed=42, sample_limit=100000, balanced=True):
     matrix_dir = f"tensors/Experiment_2/language_matrix_{base_seed}"
     os.makedirs(matrix_dir, exist_ok=True)
     
-    # Generate each configuration
+    # Generate each
     for i, config in enumerate(configs):
         seed = base_seed + i
         config_dir = f"{matrix_dir}/{config['name']}_seed{seed}"
