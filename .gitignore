@@ -10,3 +10,5 @@ Experiment_1.zip
 /datasets/function.json
 manifests/
 /datasets/juliet_cs.db
+/datasets/*
+data/
