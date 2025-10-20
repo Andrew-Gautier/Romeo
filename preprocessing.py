@@ -52,7 +52,7 @@ def display_vulnerable_lines(db_path, num_samples=5, min_lines=MIN_FUNCTION_LINE
         cursor = conn.cursor()
         
         cursor.execute(
-            "SELECT cve, file, start, end, vuln, code FROM funcs WHERE vuln IS NOT NULL AND vuln != '' "
+            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE vuln IS NOT NULL AND vuln != '' "
             f"AND (end - start ) BETWEEN {min_lines} AND {max_lines} "
             "LIMIT ?", (num_samples,)
         )
@@ -63,11 +63,12 @@ def display_vulnerable_lines(db_path, num_samples=5, min_lines=MIN_FUNCTION_LINE
             return
         
         # Display each vulnerable sample and highlight the vulnerable lines
-        for i, (cve, file, start, end, vuln, code) in enumerate(vuln_samples):
+        for i, (group, file_id, start, end, vuln, code) in enumerate(vuln_samples):
             print(f"\n{'='*80}")
             print(f"Sample {i+1}")
             print(f"{'='*80}")
-            print(f"File: {file}")
+            print(f"Group: {group}")
+            print(f"File ID: {file_id}")
             print(f"Line range: {start}-{end}")
             print(f"Vulnerability info: {vuln}")
             
@@ -115,14 +116,14 @@ def load_data_from_db(db_path, language, limit_per_class=None, balance_classes=F
         
         # Get functions with vulnerabilities
         cursor.execute(
-            "SELECT cve, file, start, end, vuln, code FROM funcs WHERE vuln IS NOT NULL AND vuln != '' "
+            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE vuln IS NOT NULL AND vuln != '' "
             f"AND (end - start + 1) BETWEEN {min_lines} AND {max_lines}"
         )
         vulnerable_funcs = cursor.fetchall()
         
         # Get functions without vulnerabilities
         cursor.execute(
-            "SELECT cve, file, start, end, vuln, code FROM funcs WHERE (vuln IS NULL OR vuln = '') "
+            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE (vuln IS NULL OR vuln = '') "
             f"AND (end - start + 1) BETWEEN {min_lines} AND {max_lines}"
         )
         non_vulnerable_funcs = cursor.fetchall()
@@ -168,7 +169,7 @@ def create_labels(functions, max_lines=MAX_FUNCTION_LINES):
     vuln_count = 0
     
     try:
-        for cve, file, start, end, vuln, code in functions:
+        for group, file_id, start, end, vuln, code in functions:
             data.append(code)
             # Create one-hot encoded vector for vulnerability location
             # If vuln is None or empty, all zeros (no vulnerability)
@@ -428,8 +429,8 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, b
         'limit_per_class': limit_per_class,
         'max_function_lines': max_function_lines,
         'max_seq_length': max_seq_length,
-        'c_database': c_db_path,
-        'java_database': java_db_path,
+        'c_database': os.path.basename(c_db_path),
+        'java_database': os.path.basename(java_db_path),
         'stats': {
             'c_vuln_count': c_vuln_count,
             'c_non_vuln_count': c_non_vuln_count,

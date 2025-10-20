@@ -120,7 +120,7 @@ def find_tensor_files(root_dir):
                 
     return tensor_files
 
-def analyze_experiment_tensors(experiment_dir='tensors/Experiment_1'):
+def analyze_experiment_tensors(experiment_dir='tensors/Experiment_2'):
     """
     Analyze all tensors in the experiment directory to find max sequence lengths.
     
@@ -232,9 +232,9 @@ def print_analysis_results(results):
             print(f"  Max actual lines: {max(actual_line_values)}")
 
 def main():
-    parser = argparse.ArgumentParser(description='Analyze tensor sequence lengths in Experiment_1')
-    parser.add_argument('--dir', type=str, default='tensors/Experiment_1',
-                        help='Directory containing the tensor files (default: tensors/Experiment_1)')
+    parser = argparse.ArgumentParser(description='Analyze tensor sequence lengths in Experiment_2')
+    parser.add_argument('--dir', type=str, default='tensors/Experiment_2',
+                        help='Directory containing the tensor files (default: tensors/Experiment_2)')
     
     args = parser.parse_args()
     
@@ -281,7 +281,7 @@ def main():
                     f.write(f"  Avg actual lines: {result['avg_actual_lines']:.2f}\n")
                 f.write("\n")
     
-    print(f"\nDetailed results saved to tensor_analysis_results.txt")
+    print(f"\nDetailed results saved to tensor_analysis_results_2.txt")
 
 if __name__ == "__main__":
     main()
