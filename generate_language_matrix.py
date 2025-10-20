@@ -51,8 +51,8 @@ def generate_language_matrix(base_seed=42, sample_limit=100000, balanced=True):
         
         # Run preprocessing with the specific configuration
         stats = preprocessing.preprocess_data(
-            c_db_path='datasets/juliet_c_10+.db',
-            java_db_path='datasets/juliet_java_10+.db',
+            c_db_path='datasets/juliet_c.db',
+            java_db_path='datasets/juliet_java.db',
             tokenizer=tokenizer,
             limit_per_class=sample_limit,
             balance_classes=balanced,
