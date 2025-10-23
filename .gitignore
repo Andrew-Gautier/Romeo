@@ -8,4 +8,5 @@ tensors_run1/
 tensors_run2/
 Experiment_1.zip
 manifests/
-datasets/.DS_Store
+datasets/
+.DS_Store
