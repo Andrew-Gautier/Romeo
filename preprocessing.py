@@ -174,7 +174,7 @@ def create_labels(functions, max_lines=MAX_FUNCTION_LINES):
             # Create one-hot encoded vector for vulnerability location
             # If vuln is None or empty, all zeros (no vulnerability)
             label = torch.zeros(max_lines)
-            
+            ### Change this to be one hot encoded 
             if vuln:
                 try:
                     # Parse the vulnerability line(s)
