@@ -11,40 +11,34 @@ import numpy as np
 
 # Constants
 CVE_ID = dict(enumerate(range(100000)))  # Maps integer indices to CVE IDs
-LANGUAGES = ['c', 'java']
-MAX_FUNCTION_LINES = 150
-MIN_FUNCTION_LINES = 10
-MAX_SEQ_LENGTH = 64
+# Expanded language support (detected from id suffix)
+LANGUAGES = ['c', 'cpp', 'java', 'python', 'csharp']
+# Default token thresholds for filtering functions
+MAX_TOKENS = 4096
+MIN_TOKENS = 32
 
-def pad_sequences(sequences, maxlen, padding='post', value=0):
-    """Pads sequences to the same length."""
-    output = []
-    for seq in sequences:
-        if len(seq) > maxlen:
-            # Truncate
-            new_seq = seq[:maxlen]
-        else:
-            # Pad
-            pad_length = maxlen - len(seq)
-            if padding == 'post':
-                new_seq = seq + [value] * pad_length
-            else:  # 'pre'
-                new_seq = [value] * pad_length + seq
-        output.append(new_seq)
-    return np.array(output)
+def pad_sequence(sequence, maxlen, padding='post', value=0):
+    """Pad or truncate a single sequence to maxlen."""
+    if len(sequence) > maxlen:
+        return np.array(sequence[:maxlen])
+    pad_length = maxlen - len(sequence)
+    if padding == 'post':
+        return np.array(sequence + [value] * pad_length)
+    return np.array([value] * pad_length + sequence)
 
 # Function to display vulnerable lines in code for manual verification
-def display_vulnerable_lines(db_path, num_samples=5, min_lines=MIN_FUNCTION_LINES, max_lines=MAX_FUNCTION_LINES):
+def display_vulnerable_lines(db_path, num_samples=5, tokenizer=None, min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS):
     """
     Display vulnerable lines from the database for manual verification.
     
     Args:
         db_path (str): Path to the SQLite database
         num_samples (int): Number of samples to display
-        min_lines (int): Minimum number of lines a function should have
-        max_lines (int): Maximum number of lines a function should have
+        tokenizer: Optional tokenizer to show token counts
+        min_tokens (int): Minimum tokens per function
+        max_tokens (int): Maximum tokens per function
     """
-    print(f"Displaying vulnerable lines from {db_path} for manual verification...")
+    print(f"Displaying vulnerable samples from {db_path} for manual verification...")
     
     try:
         # Load some vulnerable functions
@@ -52,9 +46,8 @@ def display_vulnerable_lines(db_path, num_samples=5, min_lines=MIN_FUNCTION_LINE
         cursor = conn.cursor()
         
         cursor.execute(
-            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE vuln IS NOT NULL AND vuln != '' "
-            f"AND (end - start ) BETWEEN {min_lines} AND {max_lines} "
-            "LIMIT ?", (num_samples,)
+            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE vuln IS NOT NULL AND vuln != '' LIMIT ?",
+            (num_samples,)
         )
         vuln_samples = cursor.fetchall()
         
@@ -77,14 +70,11 @@ def display_vulnerable_lines(db_path, num_samples=5, min_lines=MIN_FUNCTION_LINE
                 vuln_lines = [int(v.strip()) for v in vuln.split(',')]
                 
                 code_lines = code.split('\n')
-                for j, line in enumerate(code_lines):
-                    # Calculate absolute line number and check if it's vulnerable
+                for j, line in enumerate(code_lines[:50]):
                     print(f"    {j+1:2d}: {line}")
-                
-                # Show relative line numbers (0-based) for use in model
-                print("\nVulnerable line indices for model:")
-                rel_lines = [line - start for line in vuln_lines if 0 <= (line - start) < max_lines]
-                print(rel_lines)
+                if tokenizer is not None:
+                    tok_len = len(tokenizer.encode(code, add_special_tokens=False))
+                    print(f"Token count: {tok_len} (filter range {min_tokens}-{max_tokens})")
                 
             except Exception as e:
                 print(f"Error parsing vulnerability info: {str(e)}")
@@ -95,17 +85,33 @@ def display_vulnerable_lines(db_path, num_samples=5, min_lines=MIN_FUNCTION_LINE
         print(f"Error displaying vulnerable lines: {str(e)}")
 
 # Database functions
-def load_data_from_db(db_path, language, limit_per_class=None, balance_classes=False, min_lines=MIN_FUNCTION_LINES, max_lines=MAX_FUNCTION_LINES):
+def detect_language_from_id(file_id: str) -> str:
+    """Infer language from id suffix (file extension or tag)."""
+    fid = str(file_id).lower()
+    if fid.endswith('.c') or fid.endswith('.cpp') or fid.endswith('.cc') or fid.endswith('.cxx'):
+        return 'c'
+    if fid.endswith('.java'):
+        return 'java'
+    if fid.endswith('.py'):
+        return 'python'
+    if fid.endswith('.cs'):
+        return 'csharp'
+    for lang in LANGUAGES:
+        if lang in fid:
+            return lang
+    return 'unknown'
+
+def load_data_from_db(db_path, tokenizer, limit_per_class=None, balance_classes=False, min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS):
     """
     Load function data from a database with optional class balancing.
     
     Args:
         db_path (str): Path to the SQLite database
-        language (str): The programming language ('c' or 'java')
+        tokenizer: Tokenizer used to compute token counts
         limit_per_class (int, optional): Maximum number of samples per class
         balance_classes (bool): Whether to balance vulnerable and non-vulnerable classes
-        min_lines (int): Minimum number of lines a function should have
-        max_lines (int): Maximum number of lines a function should have
+        min_tokens (int): Minimum number of tokens per function
+        max_tokens (int): Maximum number of tokens per function
         
     Returns:
         tuple: (all_functions, vulnerable_count, non_vulnerable_count)
@@ -114,27 +120,32 @@ def load_data_from_db(db_path, language, limit_per_class=None, balance_classes=F
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Get functions with vulnerabilities
+        # Fetch all candidates and filter by token count after tokenization
         cursor.execute(
-            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE vuln IS NOT NULL AND vuln != '' "
-            f"AND (end - start + 1) BETWEEN {min_lines} AND {max_lines}"
+            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE vuln IS NOT NULL AND vuln != ''"
         )
-        vulnerable_funcs = cursor.fetchall()
-        
-        # Get functions without vulnerabilities
+        vuln_candidates = cursor.fetchall()
         cursor.execute(
-            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE (vuln IS NULL OR vuln = '') "
-            f"AND (end - start + 1) BETWEEN {min_lines} AND {max_lines}"
+            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE (vuln IS NULL OR vuln = '')"
         )
-        non_vulnerable_funcs = cursor.fetchall()
+        non_vuln_candidates = cursor.fetchall()
+
+        def filter_by_tokens(rows):
+            out = []
+            for row in rows:
+                group, file_id, start, end, vuln, code = row
+                tokens = tokenizer.encode(code, add_special_tokens=False)
+                if min_tokens <= len(tokens) <= max_tokens:
+                    out.append((group, file_id, start, end, vuln, code, tokens))
+            return out
+
+        vulnerable_funcs = filter_by_tokens(vuln_candidates)
+        non_vulnerable_funcs = filter_by_tokens(non_vuln_candidates)
         
         # Apply balancing if needed
-        if balance_classes and limit_per_class:
-            # Limit both classes to the same size
+        if limit_per_class is not None:
             vuln_limit = min(len(vulnerable_funcs), limit_per_class)
             non_vuln_limit = min(len(non_vulnerable_funcs), limit_per_class)
-            
-            # If one class is smaller, limit both to the smaller size for balance
             if balance_classes:
                 min_size = min(vuln_limit, non_vuln_limit)
                 vulnerable_funcs = vulnerable_funcs[:min_size]
@@ -142,62 +153,46 @@ def load_data_from_db(db_path, language, limit_per_class=None, balance_classes=F
             else:
                 vulnerable_funcs = vulnerable_funcs[:vuln_limit]
                 non_vulnerable_funcs = non_vulnerable_funcs[:non_vuln_limit]
-        
+
         conn.close()
-        # Combine the data
+        # Combine the data (include tokens)
         all_funcs = vulnerable_funcs + non_vulnerable_funcs
-        
         return all_funcs, len(vulnerable_funcs), len(non_vulnerable_funcs)
     except Exception as e:
         print(f"Error in load_data_from_db: {str(e)}")
         return [], 0, 0
 
 # Process vulnerability information to create labels
-def create_labels(functions, max_lines=MAX_FUNCTION_LINES):
+def create_labels(functions):
     """
     Process vulnerability information to create labels for model training.
     
     Args:
-        functions (list): List of function tuples from the database
-        max_lines (int): Maximum number of lines to consider per function
+        functions (list): List of function tuples (with tokens) from the database
         
     Returns:
-        tuple: (data, labels, vulnerable_count)
+        tuple: (data, labels, vulnerable_count, language_identifiers)
     """
     data = []
     labels = []
+    language_identifiers = []
     vuln_count = 0
     
     try:
-        for group, file_id, start, end, vuln, code in functions:
+        for group, file_id, start, end, vuln, code, tokens in functions:
             data.append(code)
-            # Create one-hot encoded vector for vulnerability location
-            # If vuln is None or empty, all zeros (no vulnerability)
-            label = torch.zeros(max_lines)
-            ### Change this to be one hot encoded 
-            if vuln:
-                try:
-                    # Parse the vulnerability line(s)
-                    vuln_lines = [int(v.strip()) for v in vuln.split(',')]
-                    for line_num in vuln_lines:
-                        # Just use the integer from vuln directly
-                        if 0 <= line_num < max_lines:
-                            label[line_num] = 1
-                    
-                    # Count this as a vulnerable function if at least one label was set
-                    if torch.sum(label) > 0:
-                        vuln_count += 1
-                except Exception as e:
-                    # In case of parsing errors, treat as non-vulnerable
-                    pass
-            
-            labels.append(label)
+            # Binary label: 1 if vulnerable, else 0
+            is_vuln = 1 if (vuln is not None and str(vuln).strip() != '') else 0
+            labels.append(torch.tensor(is_vuln, dtype=torch.long))
+            if is_vuln == 1:
+                vuln_count += 1
+            language_identifiers.append(detect_language_from_id(file_id))
     except Exception as e:
         print(f"Error in create_labels: {str(e)}")
     
-    return data, labels, vuln_count
+    return data, labels, vuln_count, language_identifiers
 
-def tokenize_and_pad(data, tokenizer, max_samples=None, max_seq_length=MAX_SEQ_LENGTH, max_function_lines=MAX_FUNCTION_LINES):
+def tokenize_and_pad(data, tokenizer, max_samples=None, max_seq_length=MAX_TOKENS):
     """
     Tokenize and pad the input text data for model input.
     
@@ -205,8 +200,7 @@ def tokenize_and_pad(data, tokenizer, max_samples=None, max_seq_length=MAX_SEQ_L
         data (list): List of code strings
         tokenizer: The tokenizer to use
         max_samples (int, optional): Maximum number of samples to process
-        max_seq_length (int): Maximum sequence length for each line
-        max_function_lines (int): Maximum number of lines per function
+        max_seq_length (int): Maximum sequence length per function (tokens)
         
     Returns:
         torch.Tensor: Tensor of tokenized and padded sequences
@@ -217,36 +211,19 @@ def tokenize_and_pad(data, tokenizer, max_samples=None, max_seq_length=MAX_SEQ_L
         print(f"Limited to {max_samples} samples")
     
     sequences = []
-    
-    # Use regular tqdm instead of notebook version
-    for idx, text in enumerate(data):
-        if idx % 5 == 0:
-            print(f"Processing sample {idx+1}/{len(data)}...")
-        
-        # Extract and limit lines
-        lines = text.split('\n')[:max_function_lines]
-        
-        # Tokenize each line
-        tokenized_lines = [tokenizer.encode(line) for line in lines]
-        
-        # Pad each line to max_seq_length
-        padded_lines = pad_sequences(tokenized_lines, maxlen=max_seq_length, padding='post')
-        
-        # Pad to max_function_lines if needed
-        if len(padded_lines) < max_function_lines:
-            padding = np.zeros((max_function_lines - len(padded_lines), max_seq_length))
-            padded_lines = np.vstack((padded_lines, padding))
-        elif len(padded_lines) > max_function_lines:
-            padded_lines = padded_lines[:max_function_lines]
-        
-        sequences.append(padded_lines)
-    
-    # Convert to tensor
-    return torch.tensor(np.array(sequences))
 
-def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, balance_classes=True, random_state=42, 
-                   max_function_lines=MAX_FUNCTION_LINES, max_seq_length=MAX_SEQ_LENGTH, output_dir='tensors', 
-                   seed_id=None):
+    for idx, text in enumerate(data):
+        if idx % 1000 == 0:
+            print(f"Processing sample {idx+1}/{len(data)}...")
+        tokens = tokenizer.encode(text, add_special_tokens=False)
+        padded = pad_sequence(tokens, maxlen=max_seq_length, padding='post', value=0)
+        sequences.append(padded)
+
+    return torch.tensor(np.stack(sequences))
+
+def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, balance_classes=True, random_state=42,
+                   min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS, max_seq_length=MAX_TOKENS,
+                   output_dir='tensors', seed_id=None):
     """
     Complete preprocessing workflow: load data, create labels, split, tokenize and save tensors.
     
@@ -284,30 +261,24 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, b
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    # Step 1: Load data from databases with class balancing
+    # Step 1: Load data with token-based filtering
     print("Loading data from databases...")
     c_funcs, c_vuln_count, c_non_vuln_count = load_data_from_db(
-        c_db_path, language='c', limit_per_class=limit_per_class, balance_classes=balance_classes, 
-        max_lines=max_function_lines
+        c_db_path, tokenizer=tokenizer, limit_per_class=limit_per_class, balance_classes=balance_classes,
+        min_tokens=min_tokens, max_tokens=max_tokens
     )
-    
+
     java_funcs, java_vuln_count, java_non_vuln_count = load_data_from_db(
-        java_db_path, language='java', limit_per_class=limit_per_class, balance_classes=balance_classes,
-        max_lines=max_function_lines
+        java_db_path, tokenizer=tokenizer, limit_per_class=limit_per_class, balance_classes=balance_classes,
+        min_tokens=min_tokens, max_tokens=max_tokens
     )
     
     print(f"C Code: {c_vuln_count} vulnerable, {c_non_vuln_count} non-vulnerable, ratio: {c_vuln_count/(c_non_vuln_count or 1):.2f}")
     print(f"Java Code: {java_vuln_count} vulnerable, {java_non_vuln_count} non-vulnerable, ratio: {java_vuln_count/(java_non_vuln_count or 1):.2f}")
     
-    # Combine data and create labels
+    # Combine data and create binary labels + language ids
     all_funcs = c_funcs + java_funcs
-    
-    # Create language identifiers for each function
-    c_identifiers = ['c'] * len(c_funcs)
-    java_identifiers = ['java'] * len(java_funcs)
-    language_identifiers = c_identifiers + java_identifiers
-    
-    data, labels, vuln_count = create_labels(all_funcs, max_lines=max_function_lines)
+    data, labels, vuln_count, language_identifiers = create_labels(all_funcs)
     
     # Quick check of positive and negative samples in the dataset
     pos_samples = sum(1 for l in labels if torch.sum(l) > 0)
@@ -324,8 +295,8 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, b
     actual_seed = seed_id if seed_id is not None else random_state
     
     train_data, temp_data, train_labels, temp_labels, train_langs, temp_langs = train_test_split(
-        data, labels, language_identifiers, test_size=0.3, random_state=actual_seed, 
-        stratify=[1 if torch.sum(l) > 0 else 0 for l in labels]
+        data, labels, language_identifiers, test_size=0.3, random_state=actual_seed,
+        stratify=[int(l.item()) for l in labels]
     )
     
     val_data, test_data, val_labels, test_labels, val_langs, test_langs = train_test_split(
@@ -336,9 +307,9 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, b
     print(f"Using seed: {actual_seed} for data splitting")
     
     # Check class distribution in splits
-    train_pos = sum(1 for l in train_labels if torch.sum(l) > 0)
-    val_pos = sum(1 for l in val_labels if torch.sum(l) > 0)
-    test_pos = sum(1 for l in test_labels if torch.sum(l) > 0)
+    train_pos = sum(int(l.item()) for l in train_labels)
+    val_pos = sum(int(l.item()) for l in val_labels)
+    test_pos = sum(int(l.item()) for l in test_labels)
     
     print(f"\nClass distribution after splitting:")
     print(f"Train: {train_pos}/{len(train_labels)} positive ({train_pos/len(train_labels)*100:.2f}%)")
@@ -347,9 +318,9 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, b
     
     # Step 3: Tokenize and create tensors
     print("Tokenizing data...")
-    train_sequences = tokenize_and_pad(train_data, tokenizer, max_seq_length=max_seq_length, max_function_lines=max_function_lines)
-    val_sequences = tokenize_and_pad(val_data, tokenizer, max_seq_length=max_seq_length, max_function_lines=max_function_lines)
-    test_sequences = tokenize_and_pad(test_data, tokenizer, max_seq_length=max_seq_length, max_function_lines=max_function_lines)
+    train_sequences = tokenize_and_pad(train_data, tokenizer, max_seq_length=max_seq_length)
+    val_sequences = tokenize_and_pad(val_data, tokenizer, max_seq_length=max_seq_length)
+    test_sequences = tokenize_and_pad(test_data, tokenizer, max_seq_length=max_seq_length)
     
     # Convert labels to tensors
     train_labels_tensor = torch.stack(train_labels)
@@ -427,8 +398,9 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, b
         'seed': actual_seed,
         'balance_classes': balance_classes,
         'limit_per_class': limit_per_class,
-        'max_function_lines': max_function_lines,
-        'max_seq_length': max_seq_length,
+    'min_tokens': min_tokens,
+    'max_tokens': max_tokens,
+    'max_seq_length': max_seq_length,
         'c_database': os.path.basename(c_db_path),
         'java_database': os.path.basename(java_db_path),
         'stats': {
@@ -460,16 +432,16 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, b
         train_lang_count = sum(1 for l in train_langs if l == lang)
         val_lang_count = sum(1 for l in val_langs if l == lang)
         test_lang_count = sum(1 for l in test_langs if l == lang)
-        
+
         # Count positive samples by language
         train_lang_indices = [i for i, l in enumerate(train_langs) if l == lang]
         val_lang_indices = [i for i, l in enumerate(val_langs) if l == lang]
         test_lang_indices = [i for i, l in enumerate(test_langs) if l == lang]
-        
-        train_lang_pos = sum(1 for i in train_lang_indices if torch.sum(train_labels[i]) > 0)
-        val_lang_pos = sum(1 for i in val_lang_indices if torch.sum(val_labels[i]) > 0)
-        test_lang_pos = sum(1 for i in test_lang_indices if torch.sum(test_labels[i]) > 0)
-        
+
+        train_lang_pos = sum(int(train_labels[i].item()) for i in train_lang_indices)
+        val_lang_pos = sum(int(val_labels[i].item()) for i in val_lang_indices)
+        test_lang_pos = sum(int(test_labels[i].item()) for i in test_lang_indices)
+
         lang_stats[lang] = {
             'train_total': train_lang_count,
             'val_total': val_lang_count, 

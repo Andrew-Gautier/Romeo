@@ -10,14 +10,14 @@ import os
 import time
 from datetime import datetime, timedelta
 
-BATCH_SIZE = 20
+BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 EPOCHS = 20
 LSTM_NODES = 256
-NUM_SENTENCES = 150
-SENTENCE_LENGTH = 64
+MAX_SEQ_LENGTH = 4096
 VOCAB_SIZE = 49152
 EMBEDDING_SIZE = 4096
+OUTPUT_DIM = 1  # Binary classification: vulnerable (1) or secure (0)
 
 
 # Make sure tensors are all on GPU
@@ -73,40 +73,41 @@ class LSTMClassifier(nn.Module):
         self.embedding.weight.data.copy_(pretrained_weights).to(device)
 
     def forward(self, text):
-        # text = [batch size, sentence length]
+        # text = [batch size, sequence length]
         text = text.to(device)
+        
+        # Ensure text is 2D: [batch_size, seq_length]
         if text.dim() == 3:
-            batch_size, sentence_length, num_sentences = text.size()
+            batch_size, seq_length, _ = text.size()
             text = text.view(batch_size, -1)
-        else:
-            batch_size = text.size(0)
         
         embedded = self.dropout(self.embedding(text))
-        
-        #print(f"Shape after embedding: {embeddefsfsfd.shape}")
+        # embedded = [batch size, seq length, embedding dim]
         
         lstm_output, (hidden, _) = self.rnn(embedded)
-        #print(f"Shape after LSTM: {lstm_output.shape}")
-        # lstm_output = [batch size, sentence length, hidden dim * num directions]
-        attention_weights = torch.softmax(self.attention(lstm_output), dim=1)
+        # lstm_output = [batch size, seq length, hidden dim * num directions]
         
-        # attention_weights = [batch size, sentence length, 1]
+        # Apply attention mechanism
+        attention_weights = torch.softmax(self.attention(lstm_output), dim=1)
+        # attention_weights = [batch size, seq length, 1]
+        
         # Perform weighted sum of LSTM outputs using attention weights
         attended_output = torch.sum(lstm_output * attention_weights, dim=1)
-        
         # attended_output = [batch size, hidden dim * num directions]
-        output = self.fc(self.dropout(attended_output))
         
-        # Apply sigmoid activation
+        output = self.fc(self.dropout(attended_output))
+        # output = [batch size, 1]
+        
+        # Apply sigmoid activation for binary classification
         output = torch.sigmoid(output)
-        #print(f"Shape of final output: {output.shape}")
+        
         return output
 
 model = LSTMClassifier(
     vocab_size=VOCAB_SIZE,
     embedding_dim=EMBEDDING_SIZE,  
     hidden_dim=LSTM_NODES,
-    output_dim=NUM_SENTENCES,  
+    output_dim=OUTPUT_DIM,  # Binary classification
     n_layers=2,
     batch_first=True,
     bidirectional=True,
@@ -138,8 +139,9 @@ def train(model, iterator, optimizer, criterion, epoch, device, checkpoint_path=
         optimizer.zero_grad()
         predictions = model(batch_sequences)
         
-        predictions = predictions.view(-1, NUM_SENTENCES).float()  # Flatten if necessary
-        batch_labels = batch_labels.view(-1, NUM_SENTENCES).float()  # Ensure labels are correctly shaped
+        # Reshape for binary classification
+        predictions = predictions.squeeze(1)  # Remove the extra dimension: [batch_size, 1] -> [batch_size]
+        batch_labels = batch_labels.float()  # Ensure labels are float for BCELoss
 
         loss = criterion(predictions, batch_labels)
         loss.backward()
@@ -175,13 +177,14 @@ def evaluate(model, iterator, criterion, device):
             batch_sequences, batch_labels = batch_sequences.to(device), batch_labels.to(device)
             
             predictions = model(batch_sequences)
-            predictions = predictions.view(-1, NUM_SENTENCES).float()  # Flatten if necessary
-            batch_labels = batch_labels.view(-1, NUM_SENTENCES).float()  # Ensure labels are correctly shaped
             
-            probabilities = torch.sigmoid(predictions)  # Convert logits to probabilities
+            # Reshape for binary classification
+            predictions = predictions.squeeze(1)  # [batch_size, 1] -> [batch_size]
+            batch_labels = batch_labels.float()
             
+            # Predictions are already probabilities (sigmoid applied in forward)
             # Update AUROC computation
-            auroc.update(probabilities, batch_labels.int())
+            auroc.update(predictions, batch_labels.int())
             
             loss = criterion(predictions, batch_labels)
             epoch_loss += loss.item()
@@ -313,7 +316,7 @@ torch.save({
         'vocab_size': VOCAB_SIZE,
         'embedding_dim': EMBEDDING_SIZE,
         'hidden_dim': LSTM_NODES,
-        'output_dim': NUM_SENTENCES,
+        'output_dim': OUTPUT_DIM,
         'n_layers': 2,
         'bidirectional': True,
         'dropout': 0.5,
