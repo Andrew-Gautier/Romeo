@@ -57,7 +57,9 @@ EMBEDDING_SIZE = 4096
 LSTM_NODES = 256
 OUTPUT_DIM = 1
 LEARNING_RATE = 0.001
-EPOCHS = 20
+EPOCHS = 30
+PATIENCE = 5  # Early stopping patience
+GRADIENT_CLIP = 1.0  # Gradient clipping threshold
 
 # Check if CUDA is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -77,11 +79,11 @@ del hf_model
 torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
 # Paths to pretraining data (adjust these for your Colab setup)
-c_pretraining_path = '/content/drive/MyDrive/romeo/pretraining/c'
-java_pretraining_path = '/content/drive/MyDrive/romeo/pretraining/java'
-csharp_pretraining_path = '/content/drive/MyDrive/romeo/pretraining/csharp'
-combined_path = '/content/drive/MyDrive/romeo/pretraining/combined'
-output_path = '/content/drive/MyDrive/romeo/models'
+c_pretraining_path = '/content/drive/MyDrive/romeo/10k/pretraining/c'
+java_pretraining_path = '/content/drive/MyDrive/romeo/10k/pretraining/java'
+csharp_pretraining_path = '/content/drive/MyDrive/romeo/10k/pretraining/csharp'
+combined_path = '/content/drive/MyDrive/romeo/10k/pretraining//combined'
+output_path = '/content/drive/MyDrive/romeo/10k/model'
 
 # Create output directory
 os.makedirs(output_path, exist_ok=True)
@@ -149,8 +151,8 @@ def create_dataloaders(train_seq, train_labels, val_seq, val_labels, batch_size=
     return train_loader, val_loader
 
 
-def train_epoch(model, iterator, optimizer, criterion, device):
-    """Train for one epoch."""
+def train_epoch(model, iterator, optimizer, criterion, device, gradient_clip=None):
+    """Train for one epoch with optional gradient clipping."""
     epoch_loss = 0
     model.train()
     
@@ -163,6 +165,11 @@ def train_epoch(model, iterator, optimizer, criterion, device):
         
         loss = criterion(predictions, batch_labels)
         loss.backward()
+        
+        # Apply gradient clipping if specified
+        if gradient_clip is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip)
+        
         optimizer.step()
         epoch_loss += loss.item()
     
@@ -190,11 +197,12 @@ def evaluate(model, iterator, criterion, device):
     return epoch_loss / len(iterator), auroc_score.item()
 
 
-def train_model(language_name, data_path, word_vectors, device, epochs=EPOCHS):
-    """Train a model for a specific language dataset."""
+def train_model(language_name, data_path, word_vectors, device, epochs=EPOCHS, patience=PATIENCE, gradient_clip=GRADIENT_CLIP):
+    """Train a model for a specific language dataset with gradient clipping and configurable patience."""
     print("\n" + "="*80)
     print(f"Training model for: {language_name.upper()}")
     print("="*80)
+    print(f"Configuration: Epochs={epochs}, Patience={patience}, Gradient Clip={gradient_clip}")
     
     # Load data
     print(f"Loading data from {data_path}...")
@@ -237,7 +245,7 @@ def train_model(language_name, data_path, word_vectors, device, epochs=EPOCHS):
     for epoch in range(epochs):
         epoch_start = time.time()
         
-        train_loss = train_epoch(model, train_loader, optimizer, criterion, device)
+        train_loss = train_epoch(model, train_loader, optimizer, criterion, device, gradient_clip)
         valid_loss, valid_auroc = evaluate(model, val_loader, criterion, device)
         
         train_losses.append(train_loss)
@@ -248,16 +256,17 @@ def train_model(language_name, data_path, word_vectors, device, epochs=EPOCHS):
         
         print(f'Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.4f} | Val Loss: {valid_loss:.4f} | Val AUROC: {valid_auroc:.4f} | Time: {epoch_time:.1f}s')
         
-        # Early stopping
+        # Early stopping with configurable patience
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
             epochs_since_improvement = 0
             print(f"  ✓ New best validation loss!")
         else:
             epochs_since_improvement += 1
+            print(f"  No improvement for {epochs_since_improvement}/{patience} epochs")
         
-        if epochs_since_improvement >= 3:
-            print(f"Early stopping at epoch {epoch+1}")
+        if epochs_since_improvement >= patience:
+            print(f"Early stopping at epoch {epoch+1} (patience={patience} reached)")
             break
     
     total_time = time.time() - start_time
@@ -283,7 +292,10 @@ def train_model(language_name, data_path, word_vectors, device, epochs=EPOCHS):
             'n_layers': 2,
             'bidirectional': True,
             'dropout': 0.5,
-            'language': language_name
+            'language': language_name,
+            'patience': patience,
+            'gradient_clip': gradient_clip,
+            'learning_rate': LEARNING_RATE
         }
     }, model_path)
     

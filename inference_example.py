@@ -3,6 +3,7 @@ Quick reference for loading and using trained LSTM models.
 Use this after training models with load_and_predict.py
 """
 
+import os
 import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
@@ -146,61 +147,163 @@ def evaluate_model(model, sequences, labels, device='cuda', batch_size=32):
     return metrics
 
 
+def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda'):
+    """
+    Create evaluation matrix: test all models on C and Python test sets.
+    
+    Args:
+        models_dir: Directory containing trained models
+        eval_base_dir: Base directory for evaluation data
+        device: Device for evaluation
+    
+    Returns:
+        results: Dict with evaluation metrics for each model-testset pair
+    """
+    import os
+    import pandas as pd
+    
+    # Find all model files
+    model_files = [f for f in os.listdir(models_dir) if f.endswith('_lstm.pt')]
+    
+    # Test set configurations
+    test_sets = {
+        'C': os.path.join(eval_base_dir, 'c', 'test'),
+        'Python': os.path.join(eval_base_dir, 'python', 'test')
+    }
+    
+    results = {}
+    matrix_data = []
+    
+    print("="*80)
+    print("EVALUATION MATRIX: Models vs Test Sets")
+    print("="*80)
+    
+    for model_file in sorted(model_files):
+        model_name = model_file.replace('_lstm.pt', '').upper()
+        model_path = os.path.join(models_dir, model_file)
+        
+        print(f"\n{'='*80}")
+        print(f"Model: {model_name}")
+        print(f"{'='*80}")
+        
+        # Load model
+        try:
+            model, checkpoint = load_trained_model(model_path, device)
+        except Exception as e:
+            print(f"Error loading model {model_file}: {e}")
+            continue
+        
+        results[model_name] = {}
+        
+        for test_name, test_path in test_sets.items():
+            print(f"\n  Testing on {test_name} test set...")
+            
+            # Load test data
+            seq_path = os.path.join(test_path, 'sequences.pt')
+            label_path = os.path.join(test_path, 'labels.pt')
+            
+            if not os.path.exists(seq_path):
+                print(f"    ⚠ Test data not found: {seq_path}")
+                results[model_name][test_name] = None
+                continue
+            
+            test_sequences = torch.load(seq_path)
+            test_labels = torch.load(label_path)
+            
+            print(f"    Samples: {len(test_sequences)}, Positive: {test_labels.sum().item()}")
+            
+            # Evaluate
+            try:
+                metrics = evaluate_model(model, test_sequences, test_labels, device)
+                results[model_name][test_name] = metrics
+                
+                print(f"    Accuracy:  {metrics['accuracy']:.4f}")
+                print(f"    Precision: {metrics['precision']:.4f}")
+                print(f"    Recall:    {metrics['recall']:.4f}")
+                print(f"    F1:        {metrics['f1']:.4f}")
+                print(f"    AUROC:     {metrics['auroc']:.4f}")
+                
+                # Store for matrix
+                matrix_data.append({
+                    'Model': model_name,
+                    'Test Set': test_name,
+                    'Accuracy': metrics['accuracy'],
+                    'Precision': metrics['precision'],
+                    'Recall': metrics['recall'],
+                    'F1': metrics['f1'],
+                    'AUROC': metrics['auroc']
+                })
+                
+            except Exception as e:
+                print(f"    ✗ Error evaluating: {e}")
+                results[model_name][test_name] = None
+        
+        # Clear memory
+        del model
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
+    
+    # Create summary tables
+    print("\n" + "="*80)
+    print("EVALUATION MATRIX SUMMARY")
+    print("="*80)
+    
+    if matrix_data:
+        df = pd.DataFrame(matrix_data)
+        
+        # Pivot tables for each metric
+        print("\n--- AUROC Scores ---")
+        auroc_pivot = df.pivot(index='Model', columns='Test Set', values='AUROC')
+        print(auroc_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
+        
+        print("\n--- Accuracy Scores ---")
+        acc_pivot = df.pivot(index='Model', columns='Test Set', values='Accuracy')
+        print(acc_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
+        
+        print("\n--- F1 Scores ---")
+        f1_pivot = df.pivot(index='Model', columns='Test Set', values='F1')
+        print(f1_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
+        
+        # Save to CSV
+        csv_path = os.path.join(models_dir, 'evaluation_matrix.csv')
+        df.to_csv(csv_path, index=False)
+        print(f"\n✓ Full results saved to: {csv_path}")
+        
+        # Save pivot tables
+        auroc_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_auroc.csv'))
+        acc_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_accuracy.csv'))
+        f1_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_f1.csv'))
+        print("✓ Pivot tables saved")
+    
+    return results
+
+
 # Example Usage
 if __name__ == "__main__":
+    import sys
+    
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}\n")
     
-    # Example 1: Load a trained model
-    print("="*60)
-    print("Example 1: Loading Trained Model")
-    print("="*60)
+    # Configuration - adjust these paths for your environment
+    models_dir = '/content/drive/MyDrive/romeo/models'
+    eval_base_dir = '/content/drive/MyDrive/romeo/evaluation'
     
-    model_path = '/content/drive/MyDrive/romeo/models/c_lstm.pt'
-    model, checkpoint = load_trained_model(model_path, device)
+    # Check if running in Colab vs local
+    if not os.path.exists(models_dir):
+        # Try local paths
+        models_dir = 'romeo/models'
+        eval_base_dir = 'tensors/TIMESTAMP/evaluation'  # Replace TIMESTAMP
+        
+        if not os.path.exists(models_dir):
+            print("Error: Models directory not found.")
+            print("Please update the paths in the script:")
+            print(f"  models_dir: {models_dir}")
+            print(f"  eval_base_dir: {eval_base_dir}")
+            sys.exit(1)
     
-    # Example 2: Load test data and make predictions
-    print("\n" + "="*60)
-    print("Example 2: Making Predictions")
-    print("="*60)
+    # Run evaluation matrix
+    results = create_evaluation_matrix(models_dir, eval_base_dir, device)
     
-    # Load test sequences (adjust path)
-    test_sequences = torch.load('/content/drive/MyDrive/romeo/pretraining/c/validation/sequences.pt')
-    test_labels = torch.load('/content/drive/MyDrive/romeo/pretraining/c/validation/labels.pt')
-    
-    print(f"Test set size: {len(test_sequences)}")
-    
-    # Make predictions
-    probabilities, predictions = predict_sequences(model, test_sequences, device)
-    
-    print(f"\nPrediction distribution:")
-    print(f"  Secure (0): {(predictions == 0).sum().item()}")
-    print(f"  Vulnerable (1): {(predictions == 1).sum().item()}")
-    
-    # Example 3: Evaluate model
-    print("\n" + "="*60)
-    print("Example 3: Model Evaluation")
-    print("="*60)
-    
-    metrics = evaluate_model(model, test_sequences, test_labels, device)
-    
-    print("\nTest Set Metrics:")
-    print(f"  Accuracy:  {metrics['accuracy']:.4f}")
-    print(f"  Precision: {metrics['precision']:.4f}")
-    print(f"  Recall:    {metrics['recall']:.4f}")
-    print(f"  F1 Score:  {metrics['f1']:.4f}")
-    print(f"  AUROC:     {metrics['auroc']:.4f}")
-    
-    # Example 4: Predict on single sample
-    print("\n" + "="*60)
-    print("Example 4: Single Sample Prediction")
-    print("="*60)
-    
-    sample_sequence = test_sequences[0:1]  # First sample
-    sample_label = test_labels[0].item()
-    
-    prob, pred = predict_sequences(model, sample_sequence, device)
-    
-    print(f"True Label: {sample_label} ({'Vulnerable' if sample_label == 1 else 'Secure'})")
-    print(f"Predicted:  {pred.item()} ({'Vulnerable' if pred.item() == 1 else 'Secure'})")
-    print(f"Confidence: {prob.item():.4f}")
-    print(f"Correct: {'✓' if pred.item() == sample_label else '✗'}")
+    print("\n" + "="*80)
+    print("Evaluation Complete!")
+    print("="*80)

@@ -12,7 +12,7 @@ import sys
 import preprocessing
 from transformers import AutoTokenizer
 
-def generate_language_matrix(base_seed=42, sample_limit=30000, balanced=True):
+def generate_language_matrix(base_seed=42, sample_limit=1000, balanced=True):
     """
     Generate multiple tensor sets for cross-language testing.
     

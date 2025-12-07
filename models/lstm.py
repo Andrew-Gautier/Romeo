@@ -18,6 +18,8 @@ MAX_SEQ_LENGTH = 4096
 VOCAB_SIZE = 49152
 EMBEDDING_SIZE = 4096
 OUTPUT_DIM = 1  # Binary classification: vulnerable (1) or secure (0)
+PATIENCE = 5  # Early stopping patience
+GRADIENT_CLIP = 1.0  # Gradient clipping threshold
 
 
 # Make sure tensors are all on GPU
@@ -125,7 +127,7 @@ with torch.no_grad():
     # Pass the batch of sequences through the model
     outputs = model(batch_sequences).to(device)
     
-def train(model, iterator, optimizer, criterion, epoch, device, checkpoint_path="c_only_checkpoints"):
+def train(model, iterator, optimizer, criterion, epoch, device, checkpoint_path="c_only_checkpoints", gradient_clip=GRADIENT_CLIP):
     epoch_loss = 0
     model.train()
     
@@ -145,6 +147,11 @@ def train(model, iterator, optimizer, criterion, epoch, device, checkpoint_path=
 
         loss = criterion(predictions, batch_labels)
         loss.backward()
+        
+        # Apply gradient clipping
+        if gradient_clip is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip)
+        
         optimizer.step()
         epoch_loss += loss.item()
     
@@ -219,11 +226,12 @@ eval_times = []
 total_start_time = time.time()
 
 print(f"Training started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"Configuration: Epochs={EPOCHS}, Patience={PATIENCE}, Gradient Clip={GRADIENT_CLIP}")
 
 for epoch in range(EPOCHS):
     epoch_start_time = time.time()
     
-    train_loss, train_duration = train(model, train_loader, optimizer, criterion, epoch, device)
+    train_loss, train_duration = train(model, train_loader, optimizer, criterion, epoch, device, gradient_clip=GRADIENT_CLIP)
     valid_loss, valid_auroc, eval_duration = evaluate(model, val_loader, criterion, device)
     
     epoch_total_duration = time.time() - epoch_start_time
@@ -246,13 +254,14 @@ for epoch in range(EPOCHS):
     if valid_loss < best_valid_loss:
         best_valid_loss = valid_loss
         epochs_since_improvement = 0  # Reset counter
-        print(f"New best validation loss: {valid_loss:.3f}")
+        print(f"✓ New best validation loss: {valid_loss:.3f}")
     else:
         epochs_since_improvement += 1  # Increment counter
+        print(f"  No improvement for {epochs_since_improvement}/{PATIENCE} epochs")
     
-    # Stop training if validation loss hasn't improved for 3 consecutive epochs
-    if epochs_since_improvement == 3:
-        print("Stopping early due to no improvement in validation loss for 3 consecutive epochs.")
+    # Stop training if validation loss hasn't improved for PATIENCE consecutive epochs
+    if epochs_since_improvement >= PATIENCE:
+        print(f"Stopping early due to no improvement in validation loss for {PATIENCE} consecutive epochs.")
         break
 
 total_training_time = time.time() - total_start_time
@@ -320,6 +329,9 @@ torch.save({
         'n_layers': 2,
         'bidirectional': True,
         'dropout': 0.5,
+        'patience': PATIENCE,
+        'gradient_clip': GRADIENT_CLIP,
+        'learning_rate': LEARNING_RATE,
     }
 }, final_model_path)
 print(f'Model saved to {final_model_path}')

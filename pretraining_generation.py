@@ -22,8 +22,8 @@ import sqlite3
 tokenizer = AutoTokenizer.from_pretrained("aiXcoder/aixcoder-7b-base")
 
 # Configuration
-pretraining_sample_size = 1000
-eval_sample_size = 1000
+pretraining_sample_size = 10000
+eval_sample_size = 10000
 random_state = 42
 
 # Datasets for pretraining
