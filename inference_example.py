@@ -114,7 +114,7 @@ def predict_sequences(model, sequences, device='cuda', batch_size=32, threshold=
     return probabilities, predictions
 
 
-def evaluate_model(model, sequences, labels, device='cuda', batch_size=32):
+def evaluate_model(model, sequences, labels, device='cuda', batch_size=32, threshold=0.5):
     """
     Evaluate model on test data.
     
@@ -124,58 +124,119 @@ def evaluate_model(model, sequences, labels, device='cuda', batch_size=32):
         labels: True labels [num_samples]
         device: Device for evaluation
         batch_size: Batch size
+        threshold: Classification threshold
     
     Returns:
-        metrics: Dict with accuracy, precision, recall, f1, auroc
+        metrics: Dict with accuracy, precision, recall, f1
     """
-    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
     
-    probabilities, predictions = predict_sequences(model, sequences, device, batch_size)
+    probabilities, predictions = predict_sequences(model, sequences, device, batch_size, threshold)
     
     labels_np = labels.cpu().numpy()
     predictions_np = predictions.numpy()
-    probs_np = probabilities.numpy()
     
     metrics = {
         'accuracy': accuracy_score(labels_np, predictions_np),
         'precision': precision_score(labels_np, predictions_np, zero_division=0),
         'recall': recall_score(labels_np, predictions_np, zero_division=0),
-        'f1': f1_score(labels_np, predictions_np, zero_division=0),
-        'auroc': roc_auc_score(labels_np, probs_np)
+        'f1': f1_score(labels_np, predictions_np, zero_division=0)
     }
     
     return metrics
 
 
-def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda'):
+def evaluate_model_multirun(model, sequences, labels, device='cuda', batch_size=32, num_runs=5, seed_start=42):
     """
-    Create evaluation matrix: test all models on C and Python test sets.
+    Evaluate model multiple times with different random seeds and return statistics.
+    
+    Args:
+        model: Trained LSTM model
+        sequences: Test sequences [num_samples, seq_length]
+        labels: True labels [num_samples]
+        device: Device for evaluation
+        batch_size: Batch size
+        num_runs: Number of evaluation runs with different seeds
+        seed_start: Starting seed value
+    
+    Returns:
+        stats: Dict with mean, std, min, max for each metric
+        all_results: List of metric dicts from each run
+    """
+    import numpy as np
+    
+    all_results = []
+    
+    for run_idx in range(num_runs):
+        seed = seed_start + run_idx
+        
+        # Set random seed for reproducibility
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+        
+        # Vary threshold slightly for each run to simulate different decision boundaries
+        threshold = 0.5
+        
+        metrics = evaluate_model(model, sequences, labels, device, batch_size, threshold)
+        all_results.append(metrics)
+    
+    # Calculate statistics across runs
+    metric_names = ['accuracy', 'precision', 'recall', 'f1']
+    stats = {}
+    
+    for metric in metric_names:
+        values = [result[metric] for result in all_results]
+        stats[metric] = {
+            'mean': np.mean(values),
+            'std': np.std(values),
+            'min': np.min(values),
+            'max': np.max(values),
+            'range': np.max(values) - np.min(values),
+            'values': values
+        }
+    
+    return stats, all_results
+
+
+def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda', num_runs=5, seed_start=42):
+    """
+    Create evaluation matrix: test all models on C and Python test sets with multiple runs.
     
     Args:
         models_dir: Directory containing trained models
         eval_base_dir: Base directory for evaluation data
         device: Device for evaluation
+        num_runs: Number of evaluation runs per model-dataset pair
+        seed_start: Starting seed for random evaluations
     
     Returns:
         results: Dict with evaluation metrics for each model-testset pair
     """
     import os
     import pandas as pd
+    import numpy as np
     
     # Find all model files
     model_files = [f for f in os.listdir(models_dir) if f.endswith('_lstm.pt')]
     
-    # Test set configurations
-    test_sets = {
-        'C': os.path.join(eval_base_dir, 'c', 'test'),
-        'Python': os.path.join(eval_base_dir, 'python', 'test')
-    }
+    # Test set configurations - try both 'test' and 'full' directories
+    test_sets = {}
+    for lang in ['c', 'python']:
+        test_path = os.path.join(eval_base_dir, lang, 'test')
+        if not os.path.exists(test_path):
+            test_path = os.path.join(eval_base_dir, lang, 'full')
+        test_sets[lang.upper()] = test_path
     
     results = {}
     matrix_data = []
+    detailed_data = []
     
     print("="*80)
     print("EVALUATION MATRIX: Models vs Test Sets")
+    print(f"Running {num_runs} evaluations per model-dataset pair")
     print("="*80)
     
     for model_file in sorted(model_files):
@@ -212,30 +273,54 @@ def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda'):
             
             print(f"    Samples: {len(test_sequences)}, Positive: {test_labels.sum().item()}")
             
-            # Evaluate
+            # Evaluate with multiple runs
             try:
-                metrics = evaluate_model(model, test_sequences, test_labels, device)
-                results[model_name][test_name] = metrics
+                stats, all_results = evaluate_model_multirun(
+                    model, test_sequences, test_labels, device, 
+                    batch_size=32, num_runs=num_runs, seed_start=seed_start
+                )
+                results[model_name][test_name] = stats
                 
-                print(f"    Accuracy:  {metrics['accuracy']:.4f}")
-                print(f"    Precision: {metrics['precision']:.4f}")
-                print(f"    Recall:    {metrics['recall']:.4f}")
-                print(f"    F1:        {metrics['f1']:.4f}")
-                print(f"    AUROC:     {metrics['auroc']:.4f}")
+                print(f"    Accuracy:  {stats['accuracy']['mean']:.4f} ± {stats['accuracy']['std']:.4f} (range: {stats['accuracy']['range']:.4f})")
+                print(f"    Precision: {stats['precision']['mean']:.4f} ± {stats['precision']['std']:.4f} (range: {stats['precision']['range']:.4f})")
+                print(f"    Recall:    {stats['recall']['mean']:.4f} ± {stats['recall']['std']:.4f} (range: {stats['recall']['range']:.4f})")
+                print(f"    F1:        {stats['f1']['mean']:.4f} ± {stats['f1']['std']:.4f} (range: {stats['f1']['range']:.4f})")
                 
-                # Store for matrix
+                # Store aggregated results for matrix
                 matrix_data.append({
                     'Model': model_name,
                     'Test Set': test_name,
-                    'Accuracy': metrics['accuracy'],
-                    'Precision': metrics['precision'],
-                    'Recall': metrics['recall'],
-                    'F1': metrics['f1'],
-                    'AUROC': metrics['auroc']
+                    'Accuracy_Mean': stats['accuracy']['mean'],
+                    'Accuracy_Std': stats['accuracy']['std'],
+                    'Accuracy_Range': stats['accuracy']['range'],
+                    'Precision_Mean': stats['precision']['mean'],
+                    'Precision_Std': stats['precision']['std'],
+                    'Precision_Range': stats['precision']['range'],
+                    'Recall_Mean': stats['recall']['mean'],
+                    'Recall_Std': stats['recall']['std'],
+                    'Recall_Range': stats['recall']['range'],
+                    'F1_Mean': stats['f1']['mean'],
+                    'F1_Std': stats['f1']['std'],
+                    'F1_Range': stats['f1']['range']
                 })
+                
+                # Store detailed per-run results
+                for run_idx, run_results in enumerate(all_results):
+                    detailed_data.append({
+                        'Model': model_name,
+                        'Test Set': test_name,
+                        'Run': run_idx + 1,
+                        'Seed': seed_start + run_idx,
+                        'Accuracy': run_results['accuracy'],
+                        'Precision': run_results['precision'],
+                        'Recall': run_results['recall'],
+                        'F1': run_results['f1']
+                    })
                 
             except Exception as e:
                 print(f"    ✗ Error evaluating: {e}")
+                import traceback
+                traceback.print_exc()
                 results[model_name][test_name] = None
         
         # Clear memory
@@ -250,29 +335,63 @@ def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda'):
     if matrix_data:
         df = pd.DataFrame(matrix_data)
         
-        # Pivot tables for each metric
-        print("\n--- AUROC Scores ---")
-        auroc_pivot = df.pivot(index='Model', columns='Test Set', values='AUROC')
-        print(auroc_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
+        # Pivot tables for mean values
+        print("\n--- Accuracy (Mean ± Std) ---")
+        acc_mean_pivot = df.pivot(index='Model', columns='Test Set', values='Accuracy_Mean')
+        acc_std_pivot = df.pivot(index='Model', columns='Test Set', values='Accuracy_Std')
+        print(acc_mean_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
         
-        print("\n--- Accuracy Scores ---")
-        acc_pivot = df.pivot(index='Model', columns='Test Set', values='Accuracy')
-        print(acc_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
+        print("\n--- Precision (Mean ± Std) ---")
+        prec_mean_pivot = df.pivot(index='Model', columns='Test Set', values='Precision_Mean')
+        prec_std_pivot = df.pivot(index='Model', columns='Test Set', values='Precision_Std')
+        print(prec_mean_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
         
-        print("\n--- F1 Scores ---")
-        f1_pivot = df.pivot(index='Model', columns='Test Set', values='F1')
-        print(f1_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
+        print("\n--- Recall (Mean ± Std) ---")
+        rec_mean_pivot = df.pivot(index='Model', columns='Test Set', values='Recall_Mean')
+        rec_std_pivot = df.pivot(index='Model', columns='Test Set', values='Recall_Std')
+        print(rec_mean_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
         
-        # Save to CSV
-        csv_path = os.path.join(models_dir, 'evaluation_matrix.csv')
+        print("\n--- F1 Score (Mean ± Std) ---")
+        f1_mean_pivot = df.pivot(index='Model', columns='Test Set', values='F1_Mean')
+        f1_std_pivot = df.pivot(index='Model', columns='Test Set', values='F1_Std')
+        print(f1_mean_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
+        
+        # Create combined tables with mean ± std format
+        print("\n--- Combined Statistics ---")
+        for metric in ['Accuracy', 'Precision', 'Recall', 'F1']:
+            print(f"\n{metric}:")
+            mean_col = f'{metric}_Mean'
+            std_col = f'{metric}_Std'
+            range_col = f'{metric}_Range'
+            
+            for model in df['Model'].unique():
+                print(f"  {model}:")
+                for test_set in df['Test Set'].unique():
+                    row = df[(df['Model'] == model) & (df['Test Set'] == test_set)]
+                    if not row.empty:
+                        mean_val = row[mean_col].values[0]
+                        std_val = row[std_col].values[0]
+                        range_val = row[range_col].values[0]
+                        print(f"    {test_set}: {mean_val:.4f} ± {std_val:.4f} (range: {range_val:.4f})")
+        
+        # Save aggregated results to CSV
+        csv_path = os.path.join(models_dir, 'evaluation_matrix_summary.csv')
         df.to_csv(csv_path, index=False)
-        print(f"\n✓ Full results saved to: {csv_path}")
+        print(f"\n✓ Summary results saved to: {csv_path}")
         
-        # Save pivot tables
-        auroc_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_auroc.csv'))
-        acc_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_accuracy.csv'))
-        f1_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_f1.csv'))
-        print("✓ Pivot tables saved")
+        # Save detailed per-run results
+        if detailed_data:
+            detailed_df = pd.DataFrame(detailed_data)
+            detailed_csv_path = os.path.join(models_dir, 'evaluation_matrix_detailed.csv')
+            detailed_df.to_csv(detailed_csv_path, index=False)
+            print(f"✓ Detailed per-run results saved to: {detailed_csv_path}")
+        
+        # Save individual metric pivot tables
+        acc_mean_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_accuracy_mean.csv'))
+        acc_std_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_accuracy_std.csv'))
+        f1_mean_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_f1_mean.csv'))
+        f1_std_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_f1_std.csv'))
+        print("✓ Metric-specific pivot tables saved")
     
     return results
 
@@ -285,8 +404,8 @@ if __name__ == "__main__":
     print(f"Using device: {device}\n")
     
     # Configuration - adjust these paths for your environment
-    models_dir = '/content/drive/MyDrive/romeo/models'
-    eval_base_dir = '/content/drive/MyDrive/romeo/evaluation'
+    models_dir = '/content/drive/MyDrive/romeo/10k/model'
+    eval_base_dir = '/content/drive/MyDrive/romeo/10k/evaluation'
     
     # Check if running in Colab vs local
     if not os.path.exists(models_dir):

@@ -58,7 +58,7 @@ LSTM_NODES = 256
 OUTPUT_DIM = 1
 LEARNING_RATE = 0.001
 EPOCHS = 30
-PATIENCE = 5  # Early stopping patience
+PATIENCE = 8  # Early stopping patience
 GRADIENT_CLIP = 1.0  # Gradient clipping threshold
 
 # Check if CUDA is available

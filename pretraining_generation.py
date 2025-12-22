@@ -4,6 +4,7 @@ import datetime
 import json
 import torch
 import numpy as np
+import argparse
 from transformers import AutoTokenizer
 from sklearn.model_selection import train_test_split
 from preprocessing import (
@@ -224,9 +225,9 @@ def create_pretraining_tensors(db_paths, tokenizer, sample_size_per_class, outpu
         'timestamp': timestamp
     }
 
-def create_evaluation_tensors(db_paths, tokenizer, sample_size_per_class, output_dir, timestamp, balance_classes=True):
+def create_evaluation_tensors(db_paths, tokenizer, sample_size_per_class, output_dir, timestamp, balance_classes=True, split_mode=True):
     """
-    Create train/val/test tensors from evaluation datasets with 60/20/20 split.
+    Create evaluation tensors from evaluation datasets.
     
     Args:
         db_paths (dict): Dictionary mapping language names to database paths
@@ -235,12 +236,14 @@ def create_evaluation_tensors(db_paths, tokenizer, sample_size_per_class, output
         output_dir (str): Base output directory
         timestamp (str): Timestamp for the run
         balance_classes (bool): Whether to balance classes
+        split_mode (bool): If True, split into train/val/test (60/20/20). If False, save all as single dataset.
     
     Returns:
         dict: Statistics about the preprocessing operation
     """
     print("\n" + "="*80)
     print("PHASE 2: Creating Evaluation Tensors")
+    print(f"Mode: {'Split (train/val/test)' if split_mode else 'Full dataset (no splits)'}")
     print("="*80)
     
     all_data = []
@@ -291,101 +294,185 @@ def create_evaluation_tensors(db_paths, tokenizer, sample_size_per_class, output
     
     print(f"\nTotal samples loaded: {len(all_data)}")
     
-    # Split into train (60%), validation (20%), test (20%)
-    train_data, temp_data, train_labels, temp_labels, train_langs, temp_langs = train_test_split(
-        all_data, all_labels, all_langs,
-        test_size=0.4,
-        random_state=random_state,
-        stratify=[int(l.item()) for l in all_labels]
-    )
-    
-    val_data, test_data, val_labels, test_labels, val_langs, test_langs = train_test_split(
-        temp_data, temp_labels, temp_langs,
-        test_size=0.5,
-        random_state=random_state,
-        stratify=[int(l.item()) for l in temp_labels]
-    )
-    
-    print(f"Train: {len(train_data)}, Validation: {len(val_data)}, Test: {len(test_data)} samples")
-    
-    # Tokenize
-    print("\nTokenizing data...")
-    train_sequences = tokenize_and_pad(train_data, tokenizer, max_seq_length=MAX_TOKENS)
-    val_sequences = tokenize_and_pad(val_data, tokenizer, max_seq_length=MAX_TOKENS)
-    test_sequences = tokenize_and_pad(test_data, tokenizer, max_seq_length=MAX_TOKENS)
-    
-    train_labels_tensor = torch.stack(train_labels)
-    val_labels_tensor = torch.stack(val_labels)
-    test_labels_tensor = torch.stack(test_labels)
-    
-    # Save tensors with directory structure: tensors/{timestamp}/evaluation/{language}/train
     base_dir = os.path.join(output_dir, timestamp, 'evaluation')
     
-    # Save by language
-    for lang in set(all_langs):
-        # Train data
-        train_lang_indices = [i for i, l in enumerate(train_langs) if l == lang]
-        if train_lang_indices:
-            lang_train_dir = os.path.join(base_dir, lang, 'train')
-            os.makedirs(lang_train_dir, exist_ok=True)
-            
-            torch.save(train_sequences[train_lang_indices], f'{lang_train_dir}/sequences.pt')
-            torch.save(train_labels_tensor[train_lang_indices], f'{lang_train_dir}/labels.pt')
-            print(f"Saved {lang} training data: {len(train_lang_indices)} samples")
+    if split_mode:
+        # Split into train (60%), validation (20%), test (20%)
+        train_data, temp_data, train_labels, temp_labels, train_langs, temp_langs = train_test_split(
+            all_data, all_labels, all_langs,
+            test_size=0.4,
+            random_state=random_state,
+            stratify=[int(l.item()) for l in all_labels]
+        )
         
-        # Validation data
-        val_lang_indices = [i for i, l in enumerate(val_langs) if l == lang]
-        if val_lang_indices:
-            lang_val_dir = os.path.join(base_dir, lang, 'validation')
-            os.makedirs(lang_val_dir, exist_ok=True)
-            
-            torch.save(val_sequences[val_lang_indices], f'{lang_val_dir}/sequences.pt')
-            torch.save(val_labels_tensor[val_lang_indices], f'{lang_val_dir}/labels.pt')
-            print(f"Saved {lang} validation data: {len(val_lang_indices)} samples")
+        val_data, test_data, val_labels, test_labels, val_langs, test_langs = train_test_split(
+            temp_data, temp_labels, temp_langs,
+            test_size=0.5,
+            random_state=random_state,
+            stratify=[int(l.item()) for l in temp_labels]
+        )
         
-        # Test data
-        test_lang_indices = [i for i, l in enumerate(test_langs) if l == lang]
-        if test_lang_indices:
-            lang_test_dir = os.path.join(base_dir, lang, 'test')
-            os.makedirs(lang_test_dir, exist_ok=True)
+        print(f"Train: {len(train_data)}, Validation: {len(val_data)}, Test: {len(test_data)} samples")
+        
+        # Tokenize
+        print("\nTokenizing data...")
+        train_sequences = tokenize_and_pad(train_data, tokenizer, max_seq_length=MAX_TOKENS)
+        val_sequences = tokenize_and_pad(val_data, tokenizer, max_seq_length=MAX_TOKENS)
+        test_sequences = tokenize_and_pad(test_data, tokenizer, max_seq_length=MAX_TOKENS)
+        
+        train_labels_tensor = torch.stack(train_labels)
+        val_labels_tensor = torch.stack(val_labels)
+        test_labels_tensor = torch.stack(test_labels)
+    else:
+        # No split - use all data as-is
+        print(f"Using all {len(all_data)} samples as single dataset (no splits)")
+        
+        # Tokenize
+        print("\nTokenizing data...")
+        all_sequences = tokenize_and_pad(all_data, tokenizer, max_seq_length=MAX_TOKENS)
+        all_labels_tensor = torch.stack(all_labels)
+    
+    # Save tensors with directory structure based on mode
+    if split_mode:
+        # Save by language with train/val/test splits
+        for lang in set(all_langs):
+            # Train data
+            train_lang_indices = [i for i, l in enumerate(train_langs) if l == lang]
+            if train_lang_indices:
+                lang_train_dir = os.path.join(base_dir, lang, 'train')
+                os.makedirs(lang_train_dir, exist_ok=True)
+                
+                torch.save(train_sequences[train_lang_indices], f'{lang_train_dir}/sequences.pt')
+                torch.save(train_labels_tensor[train_lang_indices], f'{lang_train_dir}/labels.pt')
+                print(f"Saved {lang} training data: {len(train_lang_indices)} samples")
             
-            torch.save(test_sequences[test_lang_indices], f'{lang_test_dir}/sequences.pt')
-            torch.save(test_labels_tensor[test_lang_indices], f'{lang_test_dir}/labels.pt')
-            print(f"Saved {lang} test data: {len(test_lang_indices)} samples")
-    
-    # Save combined data
-    combined_dir = os.path.join(base_dir, 'combined')
-    os.makedirs(os.path.join(combined_dir, 'train'), exist_ok=True)
-    os.makedirs(os.path.join(combined_dir, 'validation'), exist_ok=True)
-    os.makedirs(os.path.join(combined_dir, 'test'), exist_ok=True)
-    
-    torch.save(train_sequences, f'{combined_dir}/train/sequences.pt')
-    torch.save(train_labels_tensor, f'{combined_dir}/train/labels.pt')
-    torch.save(train_langs, f'{combined_dir}/train/languages.pt')
-    
-    torch.save(val_sequences, f'{combined_dir}/validation/sequences.pt')
-    torch.save(val_labels_tensor, f'{combined_dir}/validation/labels.pt')
-    torch.save(val_langs, f'{combined_dir}/validation/languages.pt')
-    
-    torch.save(test_sequences, f'{combined_dir}/test/sequences.pt')
-    torch.save(test_labels_tensor, f'{combined_dir}/test/labels.pt')
-    torch.save(test_langs, f'{combined_dir}/test/languages.pt')
-    
-    print(f"\nSaved combined evaluation data to {combined_dir}")
-    
-    return {
-        'stats': stats,
-        'train_size': len(train_data),
-        'val_size': len(val_data),
-        'test_size': len(test_data),
-        'timestamp': timestamp
-    }
+            # Validation data
+            val_lang_indices = [i for i, l in enumerate(val_langs) if l == lang]
+            if val_lang_indices:
+                lang_val_dir = os.path.join(base_dir, lang, 'validation')
+                os.makedirs(lang_val_dir, exist_ok=True)
+                
+                torch.save(val_sequences[val_lang_indices], f'{lang_val_dir}/sequences.pt')
+                torch.save(val_labels_tensor[val_lang_indices], f'{lang_val_dir}/labels.pt')
+                print(f"Saved {lang} validation data: {len(val_lang_indices)} samples")
+            
+            # Test data
+            test_lang_indices = [i for i, l in enumerate(test_langs) if l == lang]
+            if test_lang_indices:
+                lang_test_dir = os.path.join(base_dir, lang, 'test')
+                os.makedirs(lang_test_dir, exist_ok=True)
+                
+                torch.save(test_sequences[test_lang_indices], f'{lang_test_dir}/sequences.pt')
+                torch.save(test_labels_tensor[test_lang_indices], f'{lang_test_dir}/labels.pt')
+                print(f"Saved {lang} test data: {len(test_lang_indices)} samples")
+        
+        # Save combined data with splits
+        combined_dir = os.path.join(base_dir, 'combined')
+        os.makedirs(os.path.join(combined_dir, 'train'), exist_ok=True)
+        os.makedirs(os.path.join(combined_dir, 'validation'), exist_ok=True)
+        os.makedirs(os.path.join(combined_dir, 'test'), exist_ok=True)
+        
+        torch.save(train_sequences, f'{combined_dir}/train/sequences.pt')
+        torch.save(train_labels_tensor, f'{combined_dir}/train/labels.pt')
+        torch.save(train_langs, f'{combined_dir}/train/languages.pt')
+        
+        torch.save(val_sequences, f'{combined_dir}/validation/sequences.pt')
+        torch.save(val_labels_tensor, f'{combined_dir}/validation/labels.pt')
+        torch.save(val_langs, f'{combined_dir}/validation/languages.pt')
+        
+        torch.save(test_sequences, f'{combined_dir}/test/sequences.pt')
+        torch.save(test_labels_tensor, f'{combined_dir}/test/labels.pt')
+        torch.save(test_langs, f'{combined_dir}/test/languages.pt')
+        
+        print(f"\nSaved combined evaluation data to {combined_dir}")
+        
+        return {
+            'stats': stats,
+            'train_size': len(train_data),
+            'val_size': len(val_data),
+            'test_size': len(test_data),
+            'timestamp': timestamp,
+            'split_mode': True
+        }
+    else:
+        # Save by language without splits (all data in one folder)
+        for lang in set(all_langs):
+            lang_indices = [i for i, l in enumerate(all_langs) if l == lang]
+            if lang_indices:
+                lang_dir = os.path.join(base_dir, lang, 'full')
+                os.makedirs(lang_dir, exist_ok=True)
+                
+                torch.save(all_sequences[lang_indices], f'{lang_dir}/sequences.pt')
+                torch.save(all_labels_tensor[lang_indices], f'{lang_dir}/labels.pt')
+                print(f"Saved {lang} full dataset: {len(lang_indices)} samples")
+        
+        # Save combined data without splits
+        combined_dir = os.path.join(base_dir, 'combined', 'full')
+        os.makedirs(combined_dir, exist_ok=True)
+        
+        torch.save(all_sequences, f'{combined_dir}/sequences.pt')
+        torch.save(all_labels_tensor, f'{combined_dir}/labels.pt')
+        torch.save(all_langs, f'{combined_dir}/languages.pt')
+        
+        print(f"\nSaved combined evaluation data (full dataset) to {combined_dir}")
+        
+        return {
+            'stats': stats,
+            'total_size': len(all_data),
+            'timestamp': timestamp,
+            'split_mode': False
+        }
 
 def main():
-    """Main execution function."""
+    """Main execution function with command-line argument support."""
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description='Generate pretraining and evaluation tensors for vulnerability detection',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Generate with split evaluation (train/val/test) - default
+  python pretraining_generation.py
+  python pretraining_generation.py --eval-mode split
+  
+  # Generate with full evaluation (no splits)
+  python pretraining_generation.py --eval-mode full
+        """
+    )
+    
+    parser.add_argument(
+        '--eval-mode',
+        type=str,
+        choices=['split', 'full'],
+        default='split',
+        help='Evaluation tensor mode: "split" for train/val/test splits (60/20/20), "full" for single dataset with no splits (default: split)'
+    )
+    
+    parser.add_argument(
+        '--pretraining-samples',
+        type=int,
+        default=pretraining_sample_size,
+        help=f'Number of samples per class for pretraining datasets (default: {pretraining_sample_size})'
+    )
+    
+    parser.add_argument(
+        '--eval-samples',
+        type=int,
+        default=eval_sample_size,
+        help=f'Number of samples per class for evaluation datasets (default: {eval_sample_size})'
+    )
+    
+    args = parser.parse_args()
+    
+    # Determine split mode
+    split_mode = (args.eval_mode == 'split')
+    
     # Generate timestamp for this run
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     print(f"Starting pretraining generation pipeline at {timestamp}")
+    print(f"Evaluation mode: {args.eval_mode}")
+    print(f"Pretraining samples per class: {args.pretraining_samples}")
+    print(f"Evaluation samples per class: {args.eval_samples}")
     
     output_dir = 'tensors'
     os.makedirs(output_dir, exist_ok=True)
@@ -400,7 +487,7 @@ def main():
     pretraining_stats = create_pretraining_tensors(
         db_paths=pretraining_dbs,
         tokenizer=tokenizer,
-        sample_size_per_class=pretraining_sample_size,
+        sample_size_per_class=args.pretraining_samples,
         output_dir=output_dir,
         timestamp=timestamp,
         balance_classes=True
@@ -415,18 +502,20 @@ def main():
     evaluation_stats = create_evaluation_tensors(
         db_paths=evaluation_dbs,
         tokenizer=tokenizer,
-        sample_size_per_class=eval_sample_size,
+        sample_size_per_class=args.eval_samples,
         output_dir=output_dir,
         timestamp=timestamp,
-        balance_classes=True
+        balance_classes=True,
+        split_mode=split_mode
     )
     
     # Save metadata
     metadata = {
         'timestamp': timestamp,
         'random_state': random_state,
-        'pretraining_sample_size': pretraining_sample_size,
-        'eval_sample_size': eval_sample_size,
+        'pretraining_sample_size': args.pretraining_samples,
+        'eval_sample_size': args.eval_samples,
+        'eval_mode': args.eval_mode,
         'pretraining_stats': pretraining_stats,
         'evaluation_stats': evaluation_stats,
         'min_tokens': MIN_TOKENS,
