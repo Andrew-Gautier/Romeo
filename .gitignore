@@ -9,4 +9,5 @@ tensors_run2/
 Experiment_1.zip
 manifests/
 datasets/
+simhash_datasets/
 .DS_Store
