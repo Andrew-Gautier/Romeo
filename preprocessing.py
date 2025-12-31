@@ -182,7 +182,15 @@ def create_labels(functions):
         for group, file_id, start, end, vuln, code, tokens in functions:
             data.append(code)
             # Binary label: 1 if vulnerable, else 0
-            is_vuln = 1 if (vuln is not None and str(vuln).strip() != '') else 0
+            # Handle both CWE labels (Juliet: non-empty = vulnerable) and binary strings (Devign/BugsInPy: '1' = vulnerable, '0' = secure)
+            vuln_str = str(vuln).strip() if vuln is not None else ''
+            if vuln_str in ['0', '']:
+                is_vuln = 0  # Explicitly secure or empty
+            elif vuln_str == '1':
+                is_vuln = 1  # Explicitly vulnerable (binary label)
+            else:
+                is_vuln = 1  # CWE identifier or any other non-empty value = vulnerable
+            
             labels.append(torch.tensor(is_vuln, dtype=torch.long))
             if is_vuln == 1:
                 vuln_count += 1

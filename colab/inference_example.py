@@ -421,7 +421,32 @@ def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda', num_runs=
             test_sequences = torch.load(seq_path)
             test_labels = torch.load(label_path)
             
-            print(f"    Samples: {len(test_sequences)}, Positive: {test_labels.sum().item()}")
+            # FIXED: Actually count the class distribution from labels
+            num_vulnerable = int(test_labels.sum().item())
+            num_secure = int((test_labels == 0).sum().item())
+            total_samples = len(test_labels)
+            
+            print(f"    Total Samples: {total_samples}")
+            print(f"    Vulnerable: {num_vulnerable} ({num_vulnerable/total_samples*100:.1f}%)")
+            print(f"    Secure: {num_secure} ({num_secure/total_samples*100:.1f}%)")
+            
+            # Sanity check for class imbalance
+            if num_vulnerable == 0:
+                print(f"    ⚠️  WARNING: No vulnerable samples in test set!")
+            elif num_secure == 0:
+                print(f"    ⚠️  WARNING: No secure samples in test set!")
+            elif num_vulnerable == total_samples:
+                print(f"    🚨 CRITICAL: Test set is 100% vulnerable - evaluation is meaningless!")
+            elif num_secure == total_samples:
+                print(f"    🚨 CRITICAL: Test set is 100% secure - evaluation is meaningless!")
+            
+            # Get probability distribution diagnostics
+            print(f"    Analyzing model probability outputs...")
+            probabilities, _ = predict_sequences(model, test_sequences, device, threshold=0.5)
+            print(f"    Probability stats: min={probabilities.min():.6f}, max={probabilities.max():.6f}, mean={probabilities.mean():.6f}, median={probabilities.median():.6f}")
+            print(f"    Probs < 0.01: {(probabilities < 0.01).sum()}/{len(probabilities)} ({(probabilities < 0.01).sum()/len(probabilities)*100:.1f}%)")
+            print(f"    Probs > 0.99: {(probabilities > 0.99).sum()}/{len(probabilities)} ({(probabilities > 0.99).sum()/len(probabilities)*100:.1f}%)")
+            print(f"    Probs 0.01-0.99: {((probabilities >= 0.01) & (probabilities <= 0.99)).sum()}/{len(probabilities)} ({((probabilities >= 0.01) & (probabilities <= 0.99)).sum()/len(probabilities)*100:.1f}%)")
             
             # Evaluate with multiple runs and optional auto-thresholding
             try:
@@ -444,6 +469,13 @@ def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda', num_runs=
                     'Test Set': test_name,
                     'Threshold': threshold_used,
                     'Auto_Threshold': use_auto_threshold,
+                    'Total_Samples': total_samples,
+                    'Vulnerable_Samples': num_vulnerable,
+                    'Secure_Samples': num_secure,
+                    'Prob_Min': probabilities.min().item(),
+                    'Prob_Max': probabilities.max().item(),
+                    'Prob_Mean': probabilities.mean().item(),
+                    'Prob_Median': probabilities.median().item(),
                     'Accuracy_Mean': stats['accuracy']['mean'],
                     'Accuracy_Std': stats['accuracy']['std'],
                     'Accuracy_Range': stats['accuracy']['range'],
@@ -511,6 +543,20 @@ def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda', num_runs=
     if matrix_data:
         df = pd.DataFrame(matrix_data)
         
+        # Show dataset composition first
+        print("\n--- Dataset Composition ---")
+        dataset_info = df[['Test Set', 'Total_Samples', 'Vulnerable_Samples', 'Secure_Samples']].drop_duplicates()
+        for _, row in dataset_info.iterrows():
+            vuln_pct = row['Vulnerable_Samples'] / row['Total_Samples'] * 100
+            print(f"{row['Test Set']:8} | Total: {int(row['Total_Samples']):6,} | "
+                  f"Vulnerable: {int(row['Vulnerable_Samples']):6,} ({vuln_pct:.1f}%) | "
+                  f"Secure: {int(row['Secure_Samples']):6,} ({100-vuln_pct:.1f}%)")
+        
+        # Show probability distribution analysis
+        print("\n--- Probability Distribution Analysis ---")
+        prob_info = df[['Model', 'Test Set', 'Prob_Min', 'Prob_Max', 'Prob_Mean', 'Prob_Median']].copy()
+        print(prob_info.to_string(index=False, float_format=lambda x: f'{x:.6f}'))
+        
         # Show threshold information
         print("\n--- Thresholds Used ---")
         thresh_df = pd.DataFrame(threshold_data)
@@ -534,7 +580,10 @@ def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda', num_runs=
         f2_std_pivot = df.pivot(index='Model', columns='Test Set', values='F2_Std')
         f1_mean_pivot = df.pivot(index='Model', columns='Test Set', values='F1_Mean')
         f1_std_pivot = df.pivot(index='Model', columns='Test Set', values='F1_Std')
+        prec_mean_pivot = df.pivot(index='Model', columns='Test Set', values='Precision_Mean')
+        prec_std_pivot = df.pivot(index='Model', columns='Test Set', values='Precision_Std')
         fn_mean_pivot = df.pivot(index='Model', columns='Test Set', values='FalseNegatives_Mean')
+        fp_mean_pivot = df.pivot(index='Model', columns='Test Set', values='FalsePositives_Mean')
         
         print("\n--- Recall (Mean ± Std) [SECURITY PRIORITY] ---")
         print(rec_mean_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
@@ -542,8 +591,14 @@ def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda', num_runs=
         print("\n--- F2 Score (Mean ± Std) [Favors Recall 2x] ---")
         print(f2_mean_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
         
+        print("\n--- Precision (Mean ± Std) ---")
+        print(prec_mean_pivot.to_string(float_format=lambda x: f'{x:.4f}'))
+        
         print("\n--- False Negatives (Mean) [Minimize for Security] ---")
         print(fn_mean_pivot.to_string(float_format=lambda x: f'{x:.1f}'))
+        
+        print("\n--- False Positives (Mean) ---")
+        print(fp_mean_pivot.to_string(float_format=lambda x: f'{x:.1f}'))
         
         # Save aggregated results to CSV
         csv_path = os.path.join(models_dir, 'evaluation_matrix_summary.csv')
@@ -563,13 +618,16 @@ def create_evaluation_matrix(models_dir, eval_base_dir, device='cuda', num_runs=
             print(f"✓ Detailed per-run results saved to: {detailed_csv_path}")
         
         # Save individual metric pivot tables
-        rec_mean_pivot.to_csv(os.path.join(models_dir, '10kevaluation_matrix_recall_mean.csv'))
-        rec_std_pivot.to_csv(os.path.join(models_dir, '10kevaluation_matrix_recall_std.csv'))
-        f2_mean_pivot.to_csv(os.path.join(models_dir, '10kevaluation_matrix_f2_mean.csv'))
-        f2_std_pivot.to_csv(os.path.join(models_dir, '10kevaluation_matrix_f2_std.csv'))
-        f1_mean_pivot.to_csv(os.path.join(models_dir, '10kevaluation_matrix_f1_mean.csv'))
-        f1_std_pivot.to_csv(os.path.join(models_dir, '10kevaluation_matrix_f1_std.csv'))
-        fn_mean_pivot.to_csv(os.path.join(models_dir, '10kevaluation_matrix_false_negatives.csv'))
+        rec_mean_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_recall_mean.csv'))
+        rec_std_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_recall_std.csv'))
+        f2_mean_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_f2_mean.csv'))
+        f2_std_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_f2_std.csv'))
+        f1_mean_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_f1_mean.csv'))
+        f1_std_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_f1_std.csv'))
+        prec_mean_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_precision_mean.csv'))
+        prec_std_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_precision_std.csv'))
+        fn_mean_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_false_negatives.csv'))
+        fp_mean_pivot.to_csv(os.path.join(models_dir, 'evaluation_matrix_false_positives.csv'))
         print("✓ Metric-specific pivot tables saved")
     
     return results
@@ -583,9 +641,9 @@ if __name__ == "__main__":
     print(f"Using device: {device}\n")
     
     # Configuration - adjust these paths for your environment
-    models_dir = '/content/drive/MyDrive/romeo/10k/model'
-    eval_base_dir = '/content/drive/MyDrive/romeo/10k/evaluation'
-
+    models_dir = '/content/drive/MyDrive/romeo/models'
+    eval_base_dir = '/content/drive/MyDrive/romeo/evaluation'
+    
     # Check if running in Colab vs local
     if not os.path.exists(models_dir):
         # Try local paths
