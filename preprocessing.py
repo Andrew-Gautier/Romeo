@@ -101,7 +101,82 @@ def detect_language_from_id(file_id: str) -> str:
             return lang
     return 'unknown'
 
-def load_data_from_db(db_path, tokenizer, limit_per_class=None, balance_classes=False, min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS):
+def extract_cwe_from_group(group: str) -> str:
+    """
+    Extract CWE identifier from a group string.
+    Juliet datasets typically have groups like 'CWE121_Stack_Based_Buffer_Overflow'.
+    
+    Args:
+        group (str): The group string from the database
+        
+    Returns:
+        str: The CWE identifier (e.g., 'CWE121') or 'unknown'
+    """
+    import re
+    if group is None:
+        return 'unknown'
+    # Match CWE followed by digits
+    match = re.match(r'(CWE\d+)', str(group))
+    if match:
+        return match.group(1)
+    return 'unknown'
+
+
+def balance_samples_by_cve(funcs, target_count, random_state=42):
+    """
+    Balance samples across CVEs by sampling evenly from each CVE category.
+    
+    Args:
+        funcs (list): List of function tuples with (group, file_id, start, end, vuln, code, tokens)
+        target_count (int): Target total number of samples
+        random_state (int): Random seed for reproducibility
+        
+    Returns:
+        list: Balanced list of functions
+    """
+    from collections import defaultdict
+    import random
+    
+    random.seed(random_state)
+    
+    # Group functions by CWE
+    cwe_groups = defaultdict(list)
+    for func in funcs:
+        group = func[0]  # grp is the first element
+        cwe = extract_cwe_from_group(group)
+        cwe_groups[cwe].append(func)
+    
+    num_cwes = len(cwe_groups)
+    if num_cwes == 0:
+        return []
+    
+    # Calculate how many samples to take from each CWE
+    samples_per_cwe = target_count // num_cwes
+    remainder = target_count % num_cwes
+    
+    balanced_funcs = []
+    cwe_list = list(cwe_groups.keys())
+    random.shuffle(cwe_list)  # Shuffle to randomly distribute remainder
+    
+    for i, cwe in enumerate(cwe_list):
+        cwe_funcs = cwe_groups[cwe]
+        # Add one extra sample to some CVEs to handle remainder
+        extra = 1 if i < remainder else 0
+        take_count = min(len(cwe_funcs), samples_per_cwe + extra)
+        
+        # Randomly sample from this CWE
+        if take_count < len(cwe_funcs):
+            sampled = random.sample(cwe_funcs, take_count)
+        else:
+            sampled = cwe_funcs
+        balanced_funcs.extend(sampled)
+    
+    # Shuffle the final result
+    random.shuffle(balanced_funcs)
+    return balanced_funcs
+
+
+def load_data_from_db(db_path, tokenizer, limit_per_class=None, balance_classes=False, balance_cve=False, min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS, random_state=42):
     """
     Load function data from a database with optional class balancing.
     
@@ -110,40 +185,91 @@ def load_data_from_db(db_path, tokenizer, limit_per_class=None, balance_classes=
         tokenizer: Tokenizer used to compute token counts
         limit_per_class (int, optional): Maximum number of samples per class
         balance_classes (bool): Whether to balance vulnerable and non-vulnerable classes
+        balance_cve (bool): Whether to balance samples evenly across CVEs (for Juliet datasets)
         min_tokens (int): Minimum number of tokens per function
         max_tokens (int): Maximum number of tokens per function
+        random_state (int): Random seed for CVE balancing
         
     Returns:
-        tuple: (all_functions, vulnerable_count, non_vulnerable_count)
+        tuple: (all_functions, vulnerable_count, non_vulnerable_count, cve_to_idx_mapping)
+               cve_to_idx_mapping is a dict mapping CWE strings to integer indices
     """
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Fetch all candidates and filter by token count after tokenization
-        cursor.execute(
-            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE vuln IS NOT NULL AND vuln != ''"
-        )
-        vuln_candidates = cursor.fetchall()
-        cursor.execute(
-            "SELECT grp, id, start, end, vuln, code FROM funcs WHERE (vuln IS NULL OR vuln = '')"
-        )
-        non_vuln_candidates = cursor.fetchall()
-
-        def filter_by_tokens(rows):
+        # Fetch ALL data first, then classify based on vuln field format
+        cursor.execute("SELECT grp, id, start, end, vuln, code FROM funcs")
+        all_candidates = cursor.fetchall()
+        
+        def is_vulnerable(vuln_value):
+            """
+            Determine if a sample is vulnerable based on the vuln field.
+            Handles both formats:
+            - Juliet: non-empty string (CWE lines) = vulnerable, empty = non-vulnerable
+            - Devign/BugsInPy: '1' = vulnerable, '0' = non-vulnerable
+            """
+            if vuln_value is None:
+                return False
+            vuln_str = str(vuln_value).strip()
+            if vuln_str == '':
+                return False
+            if vuln_str == '0':
+                return False  # Explicitly non-vulnerable (Devign/BugsInPy format)
+            return True  # '1' or CWE line numbers = vulnerable
+        
+        def filter_by_tokens(rows, check_vulnerable):
             out = []
             for row in rows:
                 group, file_id, start, end, vuln, code = row
+                if is_vulnerable(vuln) != check_vulnerable:
+                    continue
                 tokens = tokenizer.encode(code, add_special_tokens=False)
                 if min_tokens <= len(tokens) <= max_tokens:
                     out.append((group, file_id, start, end, vuln, code, tokens))
             return out
 
-        vulnerable_funcs = filter_by_tokens(vuln_candidates)
-        non_vulnerable_funcs = filter_by_tokens(non_vuln_candidates)
+        vulnerable_funcs = filter_by_tokens(all_candidates, check_vulnerable=True)
+        non_vulnerable_funcs = filter_by_tokens(all_candidates, check_vulnerable=False)
         
-        # Apply balancing if needed
-        if limit_per_class is not None:
+        # Build CWE to index mapping from all data (before any filtering)
+        all_cwes = set()
+        for func in vulnerable_funcs + non_vulnerable_funcs:
+            cwe = extract_cwe_from_group(func[0])
+            all_cwes.add(cwe)
+        cwe_to_idx = {cwe: idx for idx, cwe in enumerate(sorted(all_cwes))}
+        
+        # Apply CVE balancing if requested (for Juliet datasets)
+        if balance_cve and limit_per_class is not None:
+            print(f"Applying CVE-balanced sampling...")
+            # Get unique CVEs and their counts before balancing
+            from collections import Counter
+            vuln_cwe_counts = Counter(extract_cwe_from_group(f[0]) for f in vulnerable_funcs)
+            non_vuln_cwe_counts = Counter(extract_cwe_from_group(f[0]) for f in non_vulnerable_funcs)
+            print(f"  Vulnerable samples span {len(vuln_cwe_counts)} CVEs")
+            print(f"  Non-vulnerable samples span {len(non_vuln_cwe_counts)} CVEs")
+            
+            # Calculate target counts
+            vuln_target = min(len(vulnerable_funcs), limit_per_class)
+            non_vuln_target = min(len(non_vulnerable_funcs), limit_per_class)
+            
+            if balance_classes:
+                min_size = min(vuln_target, non_vuln_target)
+                vuln_target = min_size
+                non_vuln_target = min_size
+            
+            # Balance by CVE
+            vulnerable_funcs = balance_samples_by_cve(vulnerable_funcs, vuln_target, random_state)
+            non_vulnerable_funcs = balance_samples_by_cve(non_vulnerable_funcs, non_vuln_target, random_state)
+            
+            # Report CVE distribution after balancing
+            vuln_cwe_after = Counter(extract_cwe_from_group(f[0]) for f in vulnerable_funcs)
+            non_vuln_cwe_after = Counter(extract_cwe_from_group(f[0]) for f in non_vulnerable_funcs)
+            print(f"  After balancing: {len(vulnerable_funcs)} vulnerable, {len(non_vulnerable_funcs)} non-vulnerable")
+            print(f"  CVEs represented: {len(vuln_cwe_after)} (vuln), {len(non_vuln_cwe_after)} (non-vuln)")
+            
+        # Apply standard balancing if CVE balancing is not used
+        elif limit_per_class is not None:
             vuln_limit = min(len(vulnerable_funcs), limit_per_class)
             non_vuln_limit = min(len(non_vulnerable_funcs), limit_per_class)
             if balance_classes:
@@ -157,26 +283,33 @@ def load_data_from_db(db_path, tokenizer, limit_per_class=None, balance_classes=
         conn.close()
         # Combine the data (include tokens)
         all_funcs = vulnerable_funcs + non_vulnerable_funcs
-        return all_funcs, len(vulnerable_funcs), len(non_vulnerable_funcs)
+        return all_funcs, len(vulnerable_funcs), len(non_vulnerable_funcs), cwe_to_idx
     except Exception as e:
         print(f"Error in load_data_from_db: {str(e)}")
-        return [], 0, 0
+        return [], 0, 0, {}
 
 # Process vulnerability information to create labels
-def create_labels(functions):
+def create_labels(functions, cwe_to_idx=None):
     """
     Process vulnerability information to create labels for model training.
     
     Args:
         functions (list): List of function tuples (with tokens) from the database
+        cwe_to_idx (dict, optional): Mapping from CWE strings to integer indices
         
     Returns:
-        tuple: (data, labels, vulnerable_count, language_identifiers)
+        tuple: (data, labels, vulnerable_count, language_identifiers, cwe_indices)
+               cwe_indices is a list of integer indices corresponding to the CWE of each sample
     """
     data = []
     labels = []
     language_identifiers = []
+    cwe_indices = []
     vuln_count = 0
+    
+    # Default mapping if none provided
+    if cwe_to_idx is None:
+        cwe_to_idx = {}
     
     try:
         for group, file_id, start, end, vuln, code, tokens in functions:
@@ -195,10 +328,15 @@ def create_labels(functions):
             if is_vuln == 1:
                 vuln_count += 1
             language_identifiers.append(detect_language_from_id(file_id))
+            
+            # Get CWE index for this sample
+            cwe = extract_cwe_from_group(group)
+            cwe_idx = cwe_to_idx.get(cwe, -1)  # -1 for unknown CVEs
+            cwe_indices.append(cwe_idx)
     except Exception as e:
         print(f"Error in create_labels: {str(e)}")
     
-    return data, labels, vuln_count, language_identifiers
+    return data, labels, vuln_count, language_identifiers, cwe_indices
 
 def tokenize_and_pad(data, tokenizer, max_samples=None, max_seq_length=MAX_TOKENS):
     """
@@ -229,194 +367,144 @@ def tokenize_and_pad(data, tokenizer, max_samples=None, max_seq_length=MAX_TOKEN
 
     return torch.tensor(np.stack(sequences))
 
-def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, balance_classes=True, random_state=42,
-                   min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS, max_seq_length=MAX_TOKENS,
-                   output_dir='tensors', seed_id=None):
+def preprocess_data(db_path, tokenizer, limit_per_class=50000, balance_classes=True, balance_cve=False, 
+                   random_state=42, min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS, max_seq_length=MAX_TOKENS,
+                   output_dir='tensors', dataset_name=None):
     """
-    Complete preprocessing workflow: load data, create labels, split, tokenize and save tensors.
+    Complete preprocessing workflow for a single dataset: load data, create labels, split, tokenize and save tensors.
     
     Args:
-        c_db_path (str): Path to C/C++ database
-        java_db_path (str): Path to Java database
+        db_path (str): Path to the SQLite database
         tokenizer: The tokenizer to use
         limit_per_class (int): Maximum number of samples per class
         balance_classes (bool): Whether to balance vulnerable and non-vulnerable classes
+        balance_cve (bool): Whether to balance samples evenly across CVEs (for Juliet datasets)
         random_state (int): Random seed for reproducibility
-        max_function_lines (int): Maximum number of lines per function
-        max_seq_length (int): Maximum sequence length for each line
+        min_tokens (int): Minimum number of tokens per function
+        max_tokens (int): Maximum number of tokens per function
+        max_seq_length (int): Maximum sequence length for tokenization
         output_dir (str): Directory to save output tensors
-        seed_id (int, optional): Manual seed ID to identify the specific data split
+        dataset_name (str, optional): Name for the dataset (used in folder naming). 
+                                      If None, extracted from db_path filename.
         
     Returns:
         dict: Statistics about the preprocessing operation
     """
     import os
     import datetime
+    import json
+    from collections import Counter
     
-    # Generate timestamp for unique folder naming
+    # Extract dataset name from path if not provided
+    if dataset_name is None:
+        dataset_name = os.path.splitext(os.path.basename(db_path))[0]
+    
+    # Generate folder name with timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    folder_name = f"{dataset_name}_{timestamp}_seed{random_state}"
     
-    # Add seed ID to folder name if provided
-    if seed_id is not None:
-        folder_name = f"{timestamp}_seed{seed_id}"
-    else:
-        folder_name = timestamp
-    
-    # Create the output directory with timestamp
+    # Create the output directory
     output_dir = os.path.join(output_dir, folder_name)
+    os.makedirs(output_dir, exist_ok=True)
     
-    # Ensure output directory exists
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    # Step 1: Load data with token-based filtering
-    print("Loading data from databases...")
-    c_funcs, c_vuln_count, c_non_vuln_count = load_data_from_db(
-        c_db_path, tokenizer=tokenizer, limit_per_class=limit_per_class, balance_classes=balance_classes,
-        min_tokens=min_tokens, max_tokens=max_tokens
-    )
-
-    java_funcs, java_vuln_count, java_non_vuln_count = load_data_from_db(
-        java_db_path, tokenizer=tokenizer, limit_per_class=limit_per_class, balance_classes=balance_classes,
-        min_tokens=min_tokens, max_tokens=max_tokens
+    # Step 1: Load data
+    print(f"Loading data from {db_path}...")
+    funcs, vuln_count, non_vuln_count, cwe_to_idx = load_data_from_db(
+        db_path, tokenizer=tokenizer, limit_per_class=limit_per_class, 
+        balance_classes=balance_classes, balance_cve=balance_cve, 
+        min_tokens=min_tokens, max_tokens=max_tokens, random_state=random_state
     )
     
-    print(f"C Code: {c_vuln_count} vulnerable, {c_non_vuln_count} non-vulnerable, ratio: {c_vuln_count/(c_non_vuln_count or 1):.2f}")
-    print(f"Java Code: {java_vuln_count} vulnerable, {java_non_vuln_count} non-vulnerable, ratio: {java_vuln_count/(java_non_vuln_count or 1):.2f}")
+    # Create reverse mapping (idx to CWE)
+    idx_to_cwe = {idx: cwe for cwe, idx in cwe_to_idx.items()}
     
-    # Combine data and create binary labels + language ids
-    all_funcs = c_funcs + java_funcs
-    data, labels, vuln_count, language_identifiers = create_labels(all_funcs)
+    print(f"Loaded: {vuln_count} vulnerable, {non_vuln_count} non-vulnerable")
+    print(f"Total unique CWEs: {len(cwe_to_idx)}")
     
-    # Quick check of positive and negative samples in the dataset
-    pos_samples = sum(1 for l in labels if torch.sum(l) > 0)
+    # Create labels and CWE indices
+    data, labels, _, _, cwe_indices = create_labels(funcs, cwe_to_idx)
+    
+    # Dataset statistics
+    pos_samples = sum(1 for l in labels if l.item() > 0)
     neg_samples = len(labels) - pos_samples
-    print(f"\nDataset class distribution:")
-    print(f"Positive samples (with vulnerability): {pos_samples} ({pos_samples/len(labels)*100:.2f}%)")
-    print(f"Negative samples (without vulnerability): {neg_samples} ({neg_samples/len(labels)*100:.2f}%)")
-    print(f"Positive:Negative ratio = 1:{neg_samples/pos_samples:.2f}" if pos_samples > 0 else "No positive samples found")
+    print(f"\nDataset: {pos_samples} positive ({pos_samples/len(labels)*100:.1f}%), "
+          f"{neg_samples} negative ({neg_samples/len(labels)*100:.1f}%)")
     
-    print(f"\nUsing seed: {seed_id if seed_id is not None else random_state} for data splitting")
-    
-    # Step 2: Split the data
-    # Use the provided random_state for reproducibility
-    actual_seed = seed_id if seed_id is not None else random_state
-    
-    train_data, temp_data, train_labels, temp_labels, train_langs, temp_langs = train_test_split(
-        data, labels, language_identifiers, test_size=0.3, random_state=actual_seed,
+    # Step 2: Split the data (70% train, 20% val, 10% test)
+    train_data, temp_data, train_labels, temp_labels, train_cwes, temp_cwes = train_test_split(
+        data, labels, cwe_indices, test_size=0.3, random_state=random_state,
         stratify=[int(l.item()) for l in labels]
     )
     
-    val_data, test_data, val_labels, test_labels, val_langs, test_langs = train_test_split(
-        temp_data, temp_labels, temp_langs, test_size=0.33, random_state=actual_seed
+    val_data, test_data, val_labels, test_labels, val_cwes, test_cwes = train_test_split(
+        temp_data, temp_labels, temp_cwes, test_size=0.33, random_state=random_state
     )
     
-    print(f"Train: {len(train_data)}, Validation: {len(val_data)}, Test: {len(test_data)} samples")
-    print(f"Using seed: {actual_seed} for data splitting")
-    
-    # Check class distribution in splits
+    # Class distribution in splits
     train_pos = sum(int(l.item()) for l in train_labels)
     val_pos = sum(int(l.item()) for l in val_labels)
     test_pos = sum(int(l.item()) for l in test_labels)
     
-    print(f"\nClass distribution after splitting:")
-    print(f"Train: {train_pos}/{len(train_labels)} positive ({train_pos/len(train_labels)*100:.2f}%)")
-    print(f"Validation: {val_pos}/{len(val_labels)} positive ({val_pos/len(val_labels)*100:.2f}%)")
-    print(f"Test: {test_pos}/{len(test_labels)} positive ({test_pos/len(test_labels)*100:.2f}%)")
+    print(f"\nSplit sizes: Train={len(train_data)}, Val={len(val_data)}, Test={len(test_data)}")
+    print(f"Positive %: Train={train_pos/len(train_labels)*100:.1f}%, "
+          f"Val={val_pos/len(val_labels)*100:.1f}%, Test={test_pos/len(test_labels)*100:.1f}%")
     
     # Step 3: Tokenize and create tensors
-    print("Tokenizing data...")
+    print("\nTokenizing...")
     train_sequences = tokenize_and_pad(train_data, tokenizer, max_seq_length=max_seq_length)
     val_sequences = tokenize_and_pad(val_data, tokenizer, max_seq_length=max_seq_length)
     test_sequences = tokenize_and_pad(test_data, tokenizer, max_seq_length=max_seq_length)
     
-    # Convert labels to tensors
+    # Convert to tensors
     train_labels_tensor = torch.stack(train_labels)
     val_labels_tensor = torch.stack(val_labels)
     test_labels_tensor = torch.stack(test_labels)
     
+    train_cwes_tensor = torch.tensor(train_cwes, dtype=torch.long)
+    val_cwes_tensor = torch.tensor(val_cwes, dtype=torch.long)
+    test_cwes_tensor = torch.tensor(test_cwes, dtype=torch.long)
+    
     # Step 4: Save tensors
     print("Saving tensors...")
     
-    # Create language-specific output folders
-    for lang in LANGUAGES:
-        lang_dir = f'{output_dir}/{lang}'
-        if not os.path.exists(lang_dir):
-            os.makedirs(lang_dir)
-    
-    # Create splits folder for combined data
-    splits_dir = f'{output_dir}/splits'
-    if not os.path.exists(splits_dir):
-        os.makedirs(splits_dir)
-            
-    # Save the combined tensors
-    torch.save(train_sequences, f'{splits_dir}/train_sequences.pt')
-    torch.save(train_labels_tensor, f'{splits_dir}/train_labels.pt')
-    torch.save(train_langs, f'{splits_dir}/train_languages.pt')
+    torch.save(train_sequences, f'{output_dir}/train_sequences.pt')
+    torch.save(train_labels_tensor, f'{output_dir}/train_labels.pt')
+    torch.save(train_cwes_tensor, f'{output_dir}/train_cwe_indices.pt')
 
-    torch.save(val_sequences, f'{splits_dir}/val_sequences.pt')
-    torch.save(val_labels_tensor, f'{splits_dir}/val_labels.pt')
-    torch.save(val_langs, f'{splits_dir}/val_languages.pt')
+    torch.save(val_sequences, f'{output_dir}/val_sequences.pt')
+    torch.save(val_labels_tensor, f'{output_dir}/val_labels.pt')
+    torch.save(val_cwes_tensor, f'{output_dir}/val_cwe_indices.pt')
 
-    torch.save(test_sequences, f'{splits_dir}/test_sequences.pt')
-    torch.save(test_labels_tensor, f'{splits_dir}/test_labels.pt')
-    torch.save(test_langs, f'{splits_dir}/test_languages.pt')
-
-    # Now create language-specific splits
-    for lang_idx, lang in enumerate(LANGUAGES):
-        # Filter data by language
-        train_lang_indices = [i for i, l in enumerate(train_langs) if l == lang]
-        val_lang_indices = [i for i, l in enumerate(val_langs) if l == lang]
-        test_lang_indices = [i for i, l in enumerate(test_langs) if l == lang]
-        
-        # Extract language-specific data
-        if train_lang_indices:
-            train_lang_sequences = train_sequences[train_lang_indices]
-            train_lang_labels = train_labels_tensor[train_lang_indices]
-            
-            # Save language-specific tensors
-            torch.save(train_lang_sequences, f'{output_dir}/{lang}/train_sequences.pt')
-            torch.save(train_lang_labels, f'{output_dir}/{lang}/train_labels.pt')
-        
-        if val_lang_indices:
-            val_lang_sequences = val_sequences[val_lang_indices]
-            val_lang_labels = val_labels_tensor[val_lang_indices]
-            
-            torch.save(val_lang_sequences, f'{output_dir}/{lang}/val_sequences.pt')
-            torch.save(val_lang_labels, f'{output_dir}/{lang}/val_labels.pt')
-        
-        if test_lang_indices:
-            test_lang_sequences = test_sequences[test_lang_indices]
-            test_lang_labels = test_labels_tensor[test_lang_indices]
-            
-            torch.save(test_lang_sequences, f'{output_dir}/{lang}/test_sequences.pt')
-            torch.save(test_lang_labels, f'{output_dir}/{lang}/test_labels.pt')
-        
-        print(f"Saved {lang} specific tensors")
+    torch.save(test_sequences, f'{output_dir}/test_sequences.pt')
+    torch.save(test_labels_tensor, f'{output_dir}/test_labels.pt')
+    torch.save(test_cwes_tensor, f'{output_dir}/test_cwe_indices.pt')
     
-    # Save global information
+    # Save CWE mappings
+    torch.save(cwe_to_idx, f'{output_dir}/cwe_to_idx.pt')
+    torch.save(idx_to_cwe, f'{output_dir}/idx_to_cwe.pt')
     
-    # Also save language information and CVE_ID mapping
-    torch.save(LANGUAGES, f'{output_dir}/languages.pt')
-    torch.save(list(CVE_ID), f'{output_dir}/cve_mapping.pt')
+    # CWE distribution stats
+    train_cwe_dist = Counter(train_cwes)
+    test_cwe_dist = Counter(test_cwes)
     
-    # Save metadata about this preprocessing run
+    # Save metadata
     metadata = {
+        'dataset_name': dataset_name,
+        'database': os.path.basename(db_path),
         'timestamp': datetime.datetime.now().isoformat(),
-        'seed': actual_seed,
+        'seed': random_state,
         'balance_classes': balance_classes,
+        'balance_cve': balance_cve,
         'limit_per_class': limit_per_class,
-    'min_tokens': min_tokens,
-    'max_tokens': max_tokens,
-    'max_seq_length': max_seq_length,
-        'c_database': os.path.basename(c_db_path),
-        'java_database': os.path.basename(java_db_path),
+        'min_tokens': min_tokens,
+        'max_tokens': max_tokens,
+        'max_seq_length': max_seq_length,
+        'num_cwes': len(cwe_to_idx),
+        'cwe_mapping': cwe_to_idx,
         'stats': {
-            'c_vuln_count': c_vuln_count,
-            'c_non_vuln_count': c_non_vuln_count,
-            'java_vuln_count': java_vuln_count,
-            'java_non_vuln_count': java_non_vuln_count,
             'total_samples': len(labels),
+            'vulnerable_count': vuln_count,
+            'non_vulnerable_count': non_vuln_count,
             'train_size': len(train_data),
             'val_size': len(val_data),
             'test_size': len(test_data),
@@ -426,59 +514,28 @@ def preprocess_data(c_db_path, java_db_path, tokenizer, limit_per_class=50000, b
         }
     }
     
-    # Save metadata as JSON
-    import json
     with open(f'{output_dir}/metadata.json', 'w') as f:
         json.dump(metadata, f, indent=2)
     
-    print("Dataset creation complete!")
+    print(f"\nDataset saved to: {output_dir}")
+    print(f"CWE distribution: {len(train_cwe_dist)} CWEs in train, {len(test_cwe_dist)} CWEs in test")
     
-    # Generate statistics for each language
-    lang_stats = {}
-    for lang in LANGUAGES:
-        # Count samples by language
-        train_lang_count = sum(1 for l in train_langs if l == lang)
-        val_lang_count = sum(1 for l in val_langs if l == lang)
-        test_lang_count = sum(1 for l in test_langs if l == lang)
-
-        # Count positive samples by language
-        train_lang_indices = [i for i, l in enumerate(train_langs) if l == lang]
-        val_lang_indices = [i for i, l in enumerate(val_langs) if l == lang]
-        test_lang_indices = [i for i, l in enumerate(test_langs) if l == lang]
-
-        train_lang_pos = sum(int(train_labels[i].item()) for i in train_lang_indices)
-        val_lang_pos = sum(int(val_labels[i].item()) for i in val_lang_indices)
-        test_lang_pos = sum(int(test_labels[i].item()) for i in test_lang_indices)
-
-        lang_stats[lang] = {
-            'train_total': train_lang_count,
-            'val_total': val_lang_count, 
-            'test_total': test_lang_count,
-            'train_positive': train_lang_pos,
-            'val_positive': val_lang_pos,
-            'test_positive': test_lang_pos
-        }
-        
-        print(f"\n{lang.upper()} specific statistics:")
-        print(f"Train: {train_lang_pos}/{train_lang_count} positive ({train_lang_pos/train_lang_count*100:.2f}% if positive)")
-        print(f"Validation: {val_lang_pos}/{val_lang_count} positive ({val_lang_pos/val_lang_count*100:.2f}% if positive)")
-        print(f"Test: {test_lang_pos}/{test_lang_count} positive ({test_lang_pos/test_lang_count*100:.2f}% if positive)")
-    
-    # Return statistics
     return {
-        'c_stats': {'vulnerable': c_vuln_count, 'non_vulnerable': c_non_vuln_count},
-        'java_stats': {'vulnerable': java_vuln_count, 'non_vulnerable': java_non_vuln_count},
-        'overall': {
-            'total_samples': len(labels),
-            'positive_samples': pos_samples,
-            'negative_samples': neg_samples,
-            'train_size': len(train_data),
-            'val_size': len(val_data),
-            'test_size': len(test_data)
-        },
-        'language_splits': lang_stats,
-        'seed': actual_seed,
-        'timestamp': datetime.datetime.now().isoformat()
+        'output_dir': output_dir,
+        'dataset_name': dataset_name,
+        'total_samples': len(labels),
+        'vulnerable': vuln_count,
+        'non_vulnerable': non_vuln_count,
+        'train_size': len(train_data),
+        'val_size': len(val_data),
+        'test_size': len(test_data),
+        'num_cwes': len(cwe_to_idx),
+        'cwe_to_idx': cwe_to_idx,
+        'idx_to_cwe': idx_to_cwe,
+        'train_cwe_distribution': dict(train_cwe_dist),
+        'test_cwe_distribution': dict(test_cwe_dist),
+        'seed': random_state,
+        'balance_cve': balance_cve,
     }
 
 print("Preprocessing functions defined successfully!")
