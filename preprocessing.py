@@ -369,7 +369,7 @@ def tokenize_and_pad(data, tokenizer, max_samples=None, max_seq_length=MAX_TOKEN
 
 def preprocess_data(db_path, tokenizer, limit_per_class=50000, balance_classes=True, balance_cve=False, 
                    random_state=42, min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS, max_seq_length=MAX_TOKENS,
-                   output_dir='tensors', dataset_name=None):
+                   output_dir='tensors', dataset_name=None, full_dataset_mode=False):
     """
     Complete preprocessing workflow for a single dataset: load data, create labels, split, tokenize and save tensors.
     
@@ -386,6 +386,8 @@ def preprocess_data(db_path, tokenizer, limit_per_class=50000, balance_classes=T
         output_dir (str): Directory to save output tensors
         dataset_name (str, optional): Name for the dataset (used in folder naming). 
                                       If None, extracted from db_path filename.
+        full_dataset_mode (bool): If True, skip train/val/test split and save all data as a single dataset.
+                                  Useful for creating OOD evaluation sets.
         
     Returns:
         dict: Statistics about the preprocessing operation
@@ -430,7 +432,82 @@ def preprocess_data(db_path, tokenizer, limit_per_class=50000, balance_classes=T
     print(f"\nDataset: {pos_samples} positive ({pos_samples/len(labels)*100:.1f}%), "
           f"{neg_samples} negative ({neg_samples/len(labels)*100:.1f}%)")
     
-    # Step 2: Split the data (70% train, 20% val, 10% test)
+    # Full dataset mode: skip train/val/test split
+    if full_dataset_mode:
+        print("\nFull dataset mode: skipping train/val/test split...")
+        
+        # Tokenize all data
+        print("Tokenizing...")
+        all_sequences = tokenize_and_pad(data, tokenizer, max_seq_length=max_seq_length)
+        
+        # Convert to tensors
+        all_labels_tensor = torch.stack(labels)
+        all_cwes_tensor = torch.tensor(cwe_indices, dtype=torch.long)
+        
+        # Save tensors (using 'full_' prefix to distinguish from split datasets)
+        print("Saving tensors...")
+        torch.save(all_sequences, f'{output_dir}/full_sequences.pt')
+        torch.save(all_labels_tensor, f'{output_dir}/full_labels.pt')
+        torch.save(all_cwes_tensor, f'{output_dir}/full_cwe_indices.pt')
+        
+        # Save CWE mappings
+        torch.save(cwe_to_idx, f'{output_dir}/cwe_to_idx.pt')
+        torch.save(idx_to_cwe, f'{output_dir}/idx_to_cwe.pt')
+        
+        # CWE distribution stats
+        cwe_dist = Counter(cwe_indices)
+        
+        # Save metadata
+        metadata = {
+            'dataset_name': dataset_name,
+            'database': os.path.basename(db_path),
+            'timestamp': datetime.datetime.now().isoformat(),
+            'seed': random_state,
+            'balance_classes': balance_classes,
+            'balance_cve': balance_cve,
+            'limit_per_class': limit_per_class,
+            'min_tokens': min_tokens,
+            'max_tokens': max_tokens,
+            'max_seq_length': max_seq_length,
+            'full_dataset_mode': True,
+            'num_cwes': len(cwe_to_idx),
+            'cwe_mapping': cwe_to_idx,
+            'stats': {
+                'total_samples': len(labels),
+                'vulnerable_count': vuln_count,
+                'non_vulnerable_count': non_vuln_count,
+                'positive_count': pos_samples,
+                'negative_count': neg_samples,
+            }
+        }
+        
+        with open(f'{output_dir}/metadata.json', 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        print(f"\nFull dataset saved to: {output_dir}")
+        print(f"Total samples: {len(labels)}")
+        print(f"CWEs represented: {len(cwe_dist)}")
+        
+        return {
+            'output_dir': output_dir,
+            'dataset_name': dataset_name,
+            'total_samples': len(labels),
+            'vulnerable': vuln_count,
+            'non_vulnerable': non_vuln_count,
+            'train_size': 0,
+            'val_size': 0,
+            'test_size': 0,
+            'full_size': len(labels),
+            'num_cwes': len(cwe_to_idx),
+            'cwe_to_idx': cwe_to_idx,
+            'idx_to_cwe': idx_to_cwe,
+            'cwe_distribution': dict(cwe_dist),
+            'seed': random_state,
+            'balance_cve': balance_cve,
+            'full_dataset_mode': True,
+        }
+    
+    # Standard mode: Split the data (70% train, 20% val, 10% test)
     train_data, temp_data, train_labels, temp_labels, train_cwes, temp_cwes = train_test_split(
         data, labels, cwe_indices, test_size=0.3, random_state=random_state,
         stratify=[int(l.item()) for l in labels]
@@ -499,6 +576,7 @@ def preprocess_data(db_path, tokenizer, limit_per_class=50000, balance_classes=T
         'min_tokens': min_tokens,
         'max_tokens': max_tokens,
         'max_seq_length': max_seq_length,
+        'full_dataset_mode': False,
         'num_cwes': len(cwe_to_idx),
         'cwe_mapping': cwe_to_idx,
         'stats': {

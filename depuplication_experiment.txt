@@ -7,4 +7,3 @@ Also, take create a balanced class, but not balanced cve, dataset of devign in d
 
 Put all of these into a folder titled Experiment_1 in tensors directory. 
 
-

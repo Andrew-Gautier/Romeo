@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
-EPOCHS = 20
+EPOCHS = 50
 LSTM_NODES = 256
 MAX_SEQ_LENGTH = 4096
 VOCAB_SIZE = 49152
@@ -26,6 +26,8 @@ GRADIENT_CLIP = 1.0  # Gradient clipping threshold
 cuda_available = torch.cuda.is_available()
 print("CUDA Available:", cuda_available)
 device = torch.device('cuda')
+
+### Take these from the Experiment_1 folder for each of the juliet_c_simhash_k=1..., 2..., 3..., etc.
 
 train_sequences_tensor = torch.load("c/train_sequences.pt").long()
 train_labels = torch.load("c/train_labels.pt") 
@@ -42,6 +44,8 @@ test_labels = torch.load("c/test_labels.pt")
 test_dataset = TensorDataset(test_sequences_tensor, test_labels)
 test_loader = DataLoader(test_dataset, batch_size = BATCH_SIZE, shuffle = False, drop_last = False)
 
+### Add an external dataset evaluation - from Devign. 
+
 torch.manual_seed(691)
 
 ## Commented out code for HPC loading of weights
@@ -56,6 +60,7 @@ except Exception as e:
 word_vectors = pretrained_weights['tok_embeddings.weight']
 print(word_vectors.shape)
 
+### Make the checkpoint path be named from the simhash folder directory. e.g. /juliet_c_simhash_k=1_checkpoint
 def save_checkpoint(state, epoch, checkpoint_path="/c_only_check_point_path"):
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
