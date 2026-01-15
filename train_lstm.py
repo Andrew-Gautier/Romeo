@@ -16,6 +16,7 @@ import time
 import argparse
 from datetime import datetime, timedelta
 from tqdm import tqdm
+from gpu_utils import select_best_gpu, clear_gpu_memory
 
 from classifier import LSTMClassifier, create_model
 
@@ -361,9 +362,13 @@ def run_experiment(
     if seeds is None:
         seeds = SEEDS
     
-    # Setup device
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # Setup device - ROBUST VERSION
+    device = select_best_gpu(min_free_gb=15)
     print(f"Using device: {device}")
+    
+    if device.type == 'cuda':
+        print(f"GPU: {torch.cuda.get_device_name(device)}")
+        print(f"Memory: {torch.cuda.get_device_properties(device).total_memory / 1024**3:.1f} GB")
     
     # Create output directories
     experiment_dir = os.path.join(output_dir, dataset_name)
