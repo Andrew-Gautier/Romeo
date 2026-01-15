@@ -5,9 +5,9 @@
 #SBATCH -N 1
 #SBATCH -c 4
 #SBATCH -n 1
-#SBATCH -p inter_a100
-#SBATCH --gpus 1
-#SBATCH --time=48:00:00
+#SBATCH -p gpu_7day
+#SBATCH --gpus 4
+#SBATCH --time=72:00:00
 
 # ============================================================================
 # Deduplication Experiment: LSTM Training on SimHash Datasets
@@ -21,8 +21,8 @@ set -e
 
 # Configuration
 EXPERIMENT_NAME="Experiment_1"
-BASE_DIR="/Users/aeg00011/Romeo"
-TENSOR_DIR="${BASE_DIR}/tensors/${EXPERIMENT_NAME}"
+BASE_DIR="/scratch/aeg00011"
+TENSOR_DIR="${BASE_DIR}/${EXPERIMENT_NAME}"
 OUTPUT_DIR="${BASE_DIR}/experiments/${EXPERIMENT_NAME}"
 WEIGHTS_PATH="${BASE_DIR}/aix3-7b-base (1).pt"
 OOD_DATASET_PATTERN="devign_*_seed42"  # Pattern to match Devign dataset folder
@@ -30,12 +30,12 @@ OOD_DATASET_PATTERN="devign_*_seed42"  # Pattern to match Devign dataset folder
 # Training parameters
 EPOCHS=50
 PATIENCE=5
-BATCH_SIZE=32
+BATCH_SIZE=8
 LEARNING_RATE=0.001
 SEEDS="42 123 456 789 1024"
 
 # K values to process (SimHash threshold)
-K_VALUES="1 2 3 4 5 6 7 8 9 10 11 12"
+K_VALUES="2 3 4 5"
 
 # Create directories
 mkdir -p "${OUTPUT_DIR}"

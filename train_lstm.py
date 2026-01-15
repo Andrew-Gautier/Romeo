@@ -39,6 +39,7 @@ DEFAULT_CONFIG = {
     'bidirectional': True,
     'dropout': 0.5,
     'n_heads': 8,  # Number of attention heads (must divide lstm_nodes * 2 evenly)
+    'use_multi_gpu': True,  # Enable DataParallel for multi-GPU training
 }
 
 SEEDS = [42, 123, 456, 789, 1024]  # 5 seeds for reproducibility
@@ -48,7 +49,7 @@ SEEDS = [42, 123, 456, 789, 1024]  # 5 seeds for reproducibility
 # Data Loading
 # ============================================================================
 
-def load_dataset(data_dir, split='train', batch_size=32, shuffle=True):
+def load_dataset(data_dir, split='train', batch_size=32, shuffle=True, num_workers=4):
     """
     Load a dataset split from a directory.
     
@@ -57,6 +58,7 @@ def load_dataset(data_dir, split='train', batch_size=32, shuffle=True):
         split (str): One of 'train', 'val', 'test'
         batch_size (int): Batch size for DataLoader
         shuffle (bool): Whether to shuffle the data
+        num_workers (int): Number of worker processes for data loading
         
     Returns:
         DataLoader: PyTorch DataLoader for the split
@@ -69,7 +71,9 @@ def load_dataset(data_dir, split='train', batch_size=32, shuffle=True):
         dataset, 
         batch_size=batch_size, 
         shuffle=shuffle, 
-        drop_last=(split == 'train')
+        drop_last=(split == 'train'),
+        num_workers=num_workers,
+        pin_memory=True  # Faster data transfer to GPU
     )
     
     return loader
@@ -247,6 +251,13 @@ def train_model(
         device=device
     )
     
+    # Wrap model in DataParallel for multi-GPU training
+    if config.get('use_multi_gpu', False) and torch.cuda.device_count() > 1:
+        print(f"Using DataParallel with {torch.cuda.device_count()} GPUs")
+        model = nn.DataParallel(model)
+        # DataParallel wraps the model, so we need to access the original model
+        # via model.module for things like get_config()
+    
     optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
     criterion = nn.BCELoss().to(device)
     
@@ -308,11 +319,12 @@ def train_model(
             best_model_state = model.state_dict().copy()
             epochs_since_improvement = 0
             
-            # Save checkpoint
+            # Save checkpoint (unwrap DataParallel if needed)
             checkpoint_path = os.path.join(checkpoint_dir, f'seed{seed}_best.pt')
+            model_to_save = model.module if isinstance(model, nn.DataParallel) else model
             torch.save({
                 'epoch': epoch + 1,
-                'model_state_dict': model.state_dict(),
+                'model_state_dict': model_to_save.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'val_loss': val_results['loss'],
                 'val_auroc': val_results['auroc'],
@@ -362,13 +374,23 @@ def run_experiment(
     if seeds is None:
         seeds = SEEDS
     
-    # Setup device - ROBUST VERSION
-    device = select_best_gpu(min_free_gb=15)
-    print(f"Using device: {device}")
-    
-    if device.type == 'cuda':
-        print(f"GPU: {torch.cuda.get_device_name(device)}")
-        print(f"Memory: {torch.cuda.get_device_properties(device).total_memory / 1024**3:.1f} GB")
+    # Setup device for multi-GPU training
+    if config.get('use_multi_gpu', False) and torch.cuda.device_count() > 1:
+        # Use all available GPUs
+        device = torch.device('cuda:0')  # Primary device
+        print(f"Multi-GPU training enabled")
+        print(f"Using {torch.cuda.device_count()} GPUs:")
+        for i in range(torch.cuda.device_count()):
+            print(f"  GPU {i}: {torch.cuda.get_device_name(i)}")
+            props = torch.cuda.get_device_properties(i)
+            print(f"    Memory: {props.total_memory / 1024**3:.1f} GB")
+    else:
+        # Single GPU mode
+        device = select_best_gpu(min_free_gb=15)
+        print(f"Using single GPU: {device}")
+        if device.type == 'cuda':
+            print(f"GPU: {torch.cuda.get_device_name(device)}")
+            print(f"Memory: {torch.cuda.get_device_properties(device).total_memory / 1024**3:.1f} GB")
     
     # Create output directories
     experiment_dir = os.path.join(output_dir, dataset_name)
@@ -465,11 +487,12 @@ def run_experiment(
             'per_cwe': cwe_results,
         }
         
-        # Save model
+        # Save model (unwrap DataParallel if needed)
+        model_to_save = model.module if isinstance(model, nn.DataParallel) else model
         model_path = os.path.join(results_dir, f'model_seed{seed}.pt')
         torch.save({
-            'model_state_dict': model.state_dict(),
-            'config': model.get_config(),
+            'model_state_dict': model_to_save.state_dict(),
+            'config': model_to_save.get_config(),
             'test_results': test_results,
             'ood_results': ood_results,
             'history': history,
@@ -649,6 +672,10 @@ def main():
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--n-heads', type=int, default=8,
                         help='Number of attention heads (must divide hidden_dim*2 evenly)')
+    parser.add_argument('--multi-gpu', action='store_true', default=True,
+                        help='Use DataParallel for multi-GPU training (default: True)')
+    parser.add_argument('--no-multi-gpu', dest='multi_gpu', action='store_false',
+                        help='Disable multi-GPU training')
     parser.add_argument('--seeds', type=int, nargs='+', default=SEEDS,
                         help='Random seeds to use')
     
@@ -660,6 +687,12 @@ def main():
     config['patience'] = args.patience
     config['learning_rate'] = args.lr
     config['n_heads'] = args.n_heads
+    config['use_multi_gpu'] = args.multi_gpu
+    
+    # Adjust batch size for multi-GPU training
+    if config['use_multi_gpu'] and torch.cuda.device_count() > 1:
+        effective_batch_size = config['batch_size'] * torch.cuda.device_count()
+        print(f"Multi-GPU mode: effective batch size = {config['batch_size']} x {torch.cuda.device_count()} = {effective_batch_size}")
     
     run_experiment(
         dataset_name=args.dataset_name,
