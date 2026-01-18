@@ -76,8 +76,8 @@ class LSTMClassifier(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(lstm_output_dim, output_dim)
         
-        # Move to device
-        self.to(self.device)
+        # NOTE: Don't call self.to(self.device) here - let the training script handle
+        # device placement. This allows DataParallel to work correctly.
 
     def forward(self, text):
         """
@@ -89,7 +89,8 @@ class LSTMClassifier(nn.Module):
         Returns:
             torch.Tensor: Output probabilities of shape [batch_size, 1]
         """
-        text = text.to(self.device)
+        # NOTE: Don't move text to self.device here - DataParallel already handles device placement
+        # The input tensor is already on the correct GPU for each replica
         
         # Ensure text is 2D: [batch_size, seq_length]
         if text.dim() == 3:
@@ -151,9 +152,12 @@ def create_model(config, pretrained_weights=None, device=None):
         device (torch.device, optional): Device to place the model on
         
     Returns:
-        LSTMClassifier: Initialized model
+        LSTMClassifier: Initialized model on the specified device
     """
-    return LSTMClassifier(
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    model = LSTMClassifier(
         vocab_size=config['vocab_size'],
         embedding_dim=config['embedding_dim'],
         hidden_dim=config['hidden_dim'],
@@ -165,3 +169,6 @@ def create_model(config, pretrained_weights=None, device=None):
         pretrained_weights=pretrained_weights,
         device=device
     )
+    
+    # Move model to device (important for DataParallel compatibility)
+    return model.to(device)

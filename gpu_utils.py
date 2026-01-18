@@ -114,11 +114,37 @@ def select_best_gpu(min_free_gb=15):
     print("⚠ No suitable GPU found, using CPU")
     return torch.device('cpu')
 
-def clear_gpu_memory():
-    """Clear GPU memory cache."""
-    if cuda.is_available():
-        cuda.empty_cache()
-        time.sleep(0.5)
+def clear_gpu_memory(verbose=True):
+    """
+    Aggressively clear GPU memory cache on all devices.
+    Call this between training runs to prevent memory buildup.
+    
+    Args:
+        verbose: Whether to print memory status
+    """
+    if not cuda.is_available():
+        return
+    
+    import gc
+    
+    # Run garbage collection first
+    gc.collect()
+    
+    # Clear cache on all GPUs
+    for i in range(cuda.device_count()):
+        try:
+            with torch.cuda.device(i):
+                cuda.empty_cache()
+                cuda.synchronize()
+        except Exception as e:
+            if verbose:
+                print(f"Warning: Could not clear GPU {i}: {e}")
+    
+    # Small delay to ensure memory is released
+    time.sleep(0.5)
+    
+    if verbose:
+        print("GPU memory cleared on all devices")
 
 def limit_gpu_memory(fraction=0.8):
     """

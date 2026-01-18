@@ -6,7 +6,7 @@
 #SBATCH -c 4
 #SBATCH -n 1
 #SBATCH -p gpu_7day
-#SBATCH --gpus 4
+#SBATCH --gres=gpu:4
 #SBATCH --time=72:00:00
 
 # ============================================================================
@@ -35,7 +35,7 @@ LEARNING_RATE=0.001
 SEEDS="42 123 456 789 1024"
 
 # K values to process (SimHash threshold)
-K_VALUES="2 3 4 5"
+K_VALUES="1 2 3 4 5 6 7 8 9 10 11 12"
 
 # Create directories
 mkdir -p "${OUTPUT_DIR}"
@@ -47,6 +47,55 @@ echo "============================================================"
 echo "Activating conda environment..."
 echo "============================================================"
 conda activate python3112
+
+# Clear any leftover GPU memory from previous jobs
+echo ""
+echo "============================================================"
+echo "Clearing GPU Memory..."
+echo "============================================================"
+nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | while read pid; do
+    if [ -n "$pid" ]; then
+        echo "Killing leftover GPU process: $pid"
+        kill -9 $pid 2>/dev/null || true
+    fi
+done
+
+# Force PyTorch to release any cached memory
+python -c "
+import torch
+if torch.cuda.is_available():
+    for i in range(torch.cuda.device_count()):
+        with torch.cuda.device(i):
+            torch.cuda.empty_cache()
+            torch.cuda.reset_peak_memory_stats()
+    print('GPU memory cleared on all devices')
+"
+echo ""
+
+# Debug: Check GPU visibility
+echo ""
+echo "============================================================"
+echo "GPU Diagnostic Information"
+echo "============================================================"
+echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-not set}"
+echo "Number of GPUs detected by nvidia-smi:"
+nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader | wc -l
+echo ""
+echo "GPU Details and Memory Usage:"
+nvidia-smi --query-gpu=index,name,memory.total,memory.used,memory.free --format=csv
+echo ""
+echo "GPU Processes (if any):"
+nvidia-smi --query-compute-apps=pid,used_memory --format=csv 2>/dev/null || echo "No GPU processes running"
+echo ""
+python -c "import torch; print(f'PyTorch CUDA available: {torch.cuda.is_available()}'); print(f'PyTorch visible GPUs: {torch.cuda.device_count()}')"
+echo "============================================================"
+echo ""
+
+# Ensure all 4 GPUs are visible to PyTorch
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+echo "Set CUDA_VISIBLE_DEVICES=0,1,2,3"
+python -c "import torch; print(f'After export - PyTorch visible GPUs: {torch.cuda.device_count()}')"
+echo ""
 
 # Log start time
 START_TIME=$(date +%s)
@@ -113,7 +162,7 @@ run_single_experiment() {
     echo "Dataset directory: ${dataset_dir}"
     echo "Output will be logged to: ${log_file}"
     
-    # Run training
+    # Run training with multi-GPU enabled
     python "${BASE_DIR}/train_lstm.py" \
         --dataset-dir "${dataset_dir}" \
         --dataset-name "${dataset_name}" \
@@ -125,6 +174,7 @@ run_single_experiment() {
         --patience ${PATIENCE} \
         --lr ${LEARNING_RATE} \
         --seeds ${SEEDS} \
+        --multi-gpu \
         2>&1 | tee "${log_file}"
     
     local status=$?

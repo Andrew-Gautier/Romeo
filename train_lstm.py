@@ -49,7 +49,7 @@ SEEDS = [42, 123, 456, 789, 1024]  # 5 seeds for reproducibility
 # Data Loading
 # ============================================================================
 
-def load_dataset(data_dir, split='train', batch_size=32, shuffle=True, num_workers=4):
+def load_dataset(data_dir, split='train', batch_size=32, shuffle=True, num_workers=0):
     """
     Load a dataset split from a directory.
     
@@ -58,7 +58,9 @@ def load_dataset(data_dir, split='train', batch_size=32, shuffle=True, num_worke
         split (str): One of 'train', 'val', 'test'
         batch_size (int): Batch size for DataLoader
         shuffle (bool): Whether to shuffle the data
-        num_workers (int): Number of worker processes for data loading
+        num_workers (int): Number of worker processes for data loading.
+                          Default is 0 (main process only) for CUDA compatibility.
+                          Using num_workers > 0 with CUDA can cause deadlocks.
         
     Returns:
         DataLoader: PyTorch DataLoader for the split
@@ -73,7 +75,7 @@ def load_dataset(data_dir, split='train', batch_size=32, shuffle=True, num_worke
         shuffle=shuffle, 
         drop_last=(split == 'train'),
         num_workers=num_workers,
-        pin_memory=True  # Faster data transfer to GPU
+        pin_memory=(num_workers == 0)  # Only use pin_memory when num_workers=0
     )
     
     return loader
@@ -255,8 +257,6 @@ def train_model(
     if config.get('use_multi_gpu', False) and torch.cuda.device_count() > 1:
         print(f"Using DataParallel with {torch.cuda.device_count()} GPUs")
         model = nn.DataParallel(model)
-        # DataParallel wraps the model, so we need to access the original model
-        # via model.module for things like get_config()
     
     optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
     criterion = nn.BCELoss().to(device)
@@ -379,11 +379,19 @@ def run_experiment(
         # Use all available GPUs
         device = torch.device('cuda:0')  # Primary device
         print(f"Multi-GPU training enabled")
-        print(f"Using {torch.cuda.device_count()} GPUs:")
+        print(f"PyTorch sees {torch.cuda.device_count()} GPUs:")
         for i in range(torch.cuda.device_count()):
             print(f"  GPU {i}: {torch.cuda.get_device_name(i)}")
             props = torch.cuda.get_device_properties(i)
             print(f"    Memory: {props.total_memory / 1024**3:.1f} GB")
+    elif config.get('use_multi_gpu', False):
+        # Multi-GPU requested but only 1 GPU available
+        device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
+        print(f"WARNING: Multi-GPU requested but only {torch.cuda.device_count()} GPU(s) detected")
+        print(f"Falling back to single GPU mode: {device}")
+        if device.type == 'cuda':
+            print(f"GPU: {torch.cuda.get_device_name(device)}")
+            print(f"Memory: {torch.cuda.get_device_properties(device).total_memory / 1024**3:.1f} GB")
     else:
         # Single GPU mode
         device = select_best_gpu(min_free_gb=15)
@@ -501,6 +509,11 @@ def run_experiment(
         
         # Plot training curves for this seed
         plot_training_curves(history, seed, plots_dir)
+        
+        # Clean up GPU memory before next seed to prevent memory buildup
+        del model
+        clear_gpu_memory(verbose=True)
+        print(f"Completed seed {seed}, GPU memory cleaned")
     
     # Compute aggregate statistics
     all_results['aggregate'] = compute_aggregate_stats(all_results['seeds'])
