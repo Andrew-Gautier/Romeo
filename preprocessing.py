@@ -444,12 +444,12 @@ def preprocess_data(db_path, tokenizer, limit_per_class=50000, balance_classes=T
         all_labels_tensor = torch.stack(labels)
         all_cwes_tensor = torch.tensor(cwe_indices, dtype=torch.long)
         
-        # Save tensors (using 'full_' prefix to distinguish from split datasets)
+        # Still saving tensors with test_prefix so it works with the batch loading script. 
         print("Saving tensors...")
-        torch.save(all_sequences, f'{output_dir}/full_sequences.pt')
-        torch.save(all_labels_tensor, f'{output_dir}/full_labels.pt')
-        torch.save(all_cwes_tensor, f'{output_dir}/full_cwe_indices.pt')
-        
+        torch.save(all_sequences, f'{output_dir}/test_sequences.pt')
+        torch.save(all_labels_tensor, f'{output_dir}/test_labels.pt')
+        torch.save(all_cwes_tensor, f'{output_dir}/test_cwe_indices.pt')
+
         # Save CWE mappings
         torch.save(cwe_to_idx, f'{output_dir}/cwe_to_idx.pt')
         torch.save(idx_to_cwe, f'{output_dir}/idx_to_cwe.pt')
