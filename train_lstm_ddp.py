@@ -154,6 +154,36 @@ def load_cwe_mapping(data_dir):
     return None
 
 
+def load_dataset_single_gpu(data_dir, split='test', batch_size=32, num_workers=2):
+    """
+    Load a dataset for single-GPU evaluation (no DistributedSampler).
+    Used for final test/OOD evaluation on rank 0 to ensure correct sample ordering.
+    
+    Args:
+        data_dir (str): Path to dataset directory
+        split (str): One of 'train', 'val', 'test'
+        batch_size (int): Batch size
+        num_workers (int): Number of worker processes for data loading
+        
+    Returns:
+        DataLoader: Non-distributed dataloader
+    """
+    sequences = torch.load(os.path.join(data_dir, f'{split}_sequences.pt')).long()
+    labels = torch.load(os.path.join(data_dir, f'{split}_labels.pt'))
+    
+    dataset = TensorDataset(sequences, labels)
+    
+    loader = DataLoader(
+        dataset, 
+        batch_size=batch_size, 
+        shuffle=False,  # Keep order for CWE alignment
+        num_workers=num_workers,
+        pin_memory=True,
+    )
+    
+    return loader
+
+
 # ============================================================================
 # Training Functions
 # ============================================================================
@@ -292,6 +322,75 @@ def evaluate(model, iterator, criterion, device):
     }
     
     return results, torch.from_numpy(all_predictions_cpu), torch.from_numpy(all_labels_cpu)
+
+
+def evaluate_single_gpu(model, iterator, criterion, device):
+    """
+    Evaluate model on a single GPU without DDP gathering.
+    Used for final test/OOD evaluation to maintain sample ordering for CWE analysis.
+    
+    Args:
+        model: The model (can be DDP-wrapped, will extract underlying module)
+        iterator: DataLoader for evaluation
+        criterion: Loss function
+        device: Device to run on
+        
+    Returns:
+        tuple: (results_dict, predictions_tensor, labels_tensor)
+    """
+    epoch_loss = 0
+    
+    # Get the underlying model if DDP-wrapped
+    eval_model = model.module if hasattr(model, 'module') else model
+    eval_model.eval()
+    
+    all_predictions = []
+    all_labels = []
+    
+    iterator_wrapped = tqdm(iterator, desc='Evaluating', leave=False)
+    
+    with torch.no_grad():
+        for batch_sequences, batch_labels in iterator_wrapped:
+            batch_sequences = batch_sequences.to(device, non_blocking=True)
+            batch_labels = batch_labels.to(device, non_blocking=True).float()
+            
+            predictions = eval_model(batch_sequences).squeeze(1)
+            
+            loss = criterion(predictions, batch_labels)
+            epoch_loss += loss.item()
+            
+            all_predictions.append(predictions.cpu())
+            all_labels.append(batch_labels.cpu())
+    
+    all_predictions = torch.cat(all_predictions)
+    all_labels = torch.cat(all_labels)
+    
+    # Convert to numpy for sklearn
+    all_predictions_np = all_predictions.numpy()
+    all_labels_np = all_labels.numpy()
+    binary_preds = (all_predictions_np >= 0.5).astype(float)
+    
+    # Compute metrics
+    try:
+        auroc = roc_auc_score(all_labels_np, all_predictions_np)
+    except ValueError:
+        auroc = 0.5
+    
+    accuracy = accuracy_score(all_labels_np, binary_preds)
+    precision = precision_score(all_labels_np, binary_preds, zero_division=0)
+    recall = recall_score(all_labels_np, binary_preds, zero_division=0)
+    f1 = f1_score(all_labels_np, binary_preds, zero_division=0)
+    
+    results = {
+        'loss': epoch_loss / len(iterator),
+        'auroc': auroc,
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1,
+    }
+    
+    return results, all_predictions, all_labels
 
 
 def evaluate_per_cwe(predictions, labels, cwe_indices, idx_to_cwe, device):
@@ -549,17 +648,25 @@ def run_experiment(
     print_rank0(f"\nLoading dataset from {dataset_dir}...")
     train_loader, train_sampler = load_dataset_ddp(dataset_dir, 'train', config['batch_size'])
     val_loader, _ = load_dataset_ddp(dataset_dir, 'val', config['batch_size'])
-    test_loader, _ = load_dataset_ddp(dataset_dir, 'test', config['batch_size'])
+    
+    # For test/OOD evaluation, load without DistributedSampler on rank 0 only
+    # This ensures correct sample ordering for CWE analysis
+    if is_main_process():
+        test_loader_single = load_dataset_single_gpu(dataset_dir, 'test', config['batch_size'] * 2)
+        ood_loader_single = load_dataset_single_gpu(ood_dir, 'test', config['batch_size'] * 2)
+    else:
+        test_loader_single = None
+        ood_loader_single = None
     
     test_cwe_indices = load_cwe_indices(dataset_dir, 'test')
     idx_to_cwe = load_cwe_mapping(dataset_dir)
     
-    print_rank0(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}, Test batches: {len(test_loader)}")
+    print_rank0(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
     
-    # Load OOD dataset
+    # Load OOD dataset info
     print_rank0(f"\nLoading OOD dataset from {ood_dir}...")
-    ood_loader, _ = load_dataset_ddp(ood_dir, 'test', config['batch_size'])
-    print_rank0(f"OOD test batches: {len(ood_loader)}")
+    if is_main_process():
+        print(f"Test batches (single GPU): {len(test_loader_single)}, OOD batches: {len(ood_loader_single)}")
     
     # Results storage
     all_results = {
@@ -585,11 +692,16 @@ def run_experiment(
             device, local_rank, checkpoint_dir, seed
         )
         
-        # Evaluate on test set (rank 0 only for full metrics)
-        print_rank0("\nEvaluating on test set...")
-        test_results, test_preds, test_labels = evaluate(model, test_loader, criterion, device)
+        # Synchronize after training before evaluation
+        if dist.is_initialized():
+            dist.barrier()
         
+        # Final evaluation on rank 0 only (single GPU, correct sample ordering)
         if is_main_process():
+            print("\nEvaluating on test set (single GPU)...")
+            test_results, test_preds, test_labels = evaluate_single_gpu(
+                model, test_loader_single, criterion, device
+            )
             print(f"Test Results: Loss={test_results['loss']:.4f}, AUROC={test_results['auroc']:.4f}, "
                   f"F1={test_results['f1']:.4f}")
             
@@ -610,14 +722,10 @@ def run_experiment(
                 
                 cwe_aurocs = [m['auroc'] for m in cwe_results.values()]
                 print(f"  CWE AUROC: Mean={np.mean(cwe_aurocs):.4f}, Std={np.std(cwe_aurocs):.4f}")
-        else:
-            cwe_results = {}
-        
-        # Evaluate on OOD set
-        print_rank0("\nEvaluating on OOD set...")
-        ood_results, _, _ = evaluate(model, ood_loader, criterion, device)
-        
-        if is_main_process():
+            
+            # Evaluate on OOD set
+            print("\nEvaluating on OOD set (single GPU)...")
+            ood_results, _, _ = evaluate_single_gpu(model, ood_loader_single, criterion, device)
             print(f"OOD Results: Loss={ood_results['loss']:.4f}, AUROC={ood_results['auroc']:.4f}, "
                   f"F1={ood_results['f1']:.4f}")
             

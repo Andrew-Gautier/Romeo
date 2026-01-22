@@ -1,0 +1,85 @@
+Evaluating: 100%|██████████| 137/137 [00:28<00:00,  5.25it/s]
+                                                             
+Test Results: Loss=0.0190, AUROC=0.9989, F1=0.9979
+Error in sys.excepthook:
+Traceback (most recent call last):
+  File "/scratch/aeg00011/miniconda3/envs/python3112/lib/python3.11/site-packages/torch/distributed/distributed_c10d.py", line 1339, in _distributed_excepthook
+    prefix = f"[rank{get_rank()}]"
+                     ^^^^^^^^^^
+  File "/scratch/aeg00011/miniconda3/envs/python3112/lib/python3.11/site-packages/torch/distributed/distributed_c10d.py", line 1746, in get_rank
+    default_pg = _get_default_group()
+                 ^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/aeg00011/miniconda3/envs/python3112/lib/python3.11/site-packages/torch/distributed/distributed_c10d.py", line 1008, in _get_default_group
+    raise ValueError(
+ValueError: Default process group has not been initialized, please make sure to call init_process_group.
+
+Original exception was:
+Traceback (most recent call last):
+  File "/scratch/aeg00011/train_lstm_ddp.py", line 847, in <module>
+    main()
+  File "/scratch/aeg00011/train_lstm_ddp.py", line 832, in main
+    run_experiment(
+  File "/scratch/aeg00011/train_lstm_ddp.py", line 597, in run_experiment
+    cwe_results = evaluate_per_cwe(test_preds, test_labels, test_cwe_indices, idx_to_cwe, device)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/aeg00011/train_lstm_ddp.py", line 317, in evaluate_per_cwe
+    cwe_preds = predictions_np[mask]
+                ~~~~~~~~~~~~~~^^^^^^
+IndexError: boolean index did not match indexed array along axis 0; size of axis is 17448 but size of corresponding boolean axis is 2181
+W0121 20:33:27.949000 139641711982400 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3617728 closing signal SIGTERM
+W0121 20:33:27.951000 139641711982400 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3617729 closing signal SIGTERM
+W0121 20:33:27.952000 139641711982400 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3617730 closing signal SIGTERM
+W0121 20:33:27.952000 139641711982400 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3617731 closing signal SIGTERM
+W0121 20:33:27.954000 139641711982400 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3617732 closing signal SIGTERM
+W0121 20:33:27.954000 139641711982400 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3617733 closing signal SIGTERM
+W0121 20:33:27.955000 139641711982400 torch/distributed/elastic/multiprocessing/api.py:851] Sending process 3617734 closing signal SIGTERM
+E0121 20:33:28.006000 139641711982400 torch/distributed/elastic/multiprocessing/api.py:826] failed (exitcode: 1) local_rank: 0 (pid: 3617727) of binary: /scratch/aeg00011/miniconda3/envs/python3112/bin/python
+Traceback (most recent call last):
+  File "/scratch/aeg00011/miniconda3/envs/python3112/bin/torchrun", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/scratch/aeg00011/miniconda3/envs/python3112/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 347, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/scratch/aeg00011/miniconda3/envs/python3112/lib/python3.11/site-packages/torch/distributed/run.py", line 879, in main
+    run(args)
+  File "/scratch/aeg00011/miniconda3/envs/python3112/lib/python3.11/site-packages/torch/distributed/run.py", line 870, in run
+    elastic_launch(
+  File "/scratch/aeg00011/miniconda3/envs/python3112/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 132, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/aeg00011/miniconda3/envs/python3112/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 263, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+/scratch/aeg00011/train_lstm_ddp.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-01-21_20:33:27
+  host      : dscog035
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 3617727)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+✓ Completed k=1 successfully
+GPU memory cleared
+
+============================================================
+Processing k=2 with DDP (8 GPUs)
+============================================================
+Dataset directory: /scratch/aeg00011/Experiment_1/juliet_c_simhash_k=2_20260112_185257_seed42
+Output will be logged to: /scratch/aeg00011/experiments/Experiment_1/logs/juliet_c_simhash_k=2.log
+Effective batch size: 128
+W0121 20:33:40.772000 139781863282496 torch/distributed/run.py:757] 
+W0121 20:33:40.772000 139781863282496 torch/distributed/run.py:757] *****************************************
+W0121 20:33:40.772000 139781863282496 torch/distributed/run.py:757] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0121 20:33:40.772000 139781863282496 torch/distributed/run.py:757] *****************************************
+
+============================================================
+DDP Training: juliet_c_simhash_k=2
+============================================================
