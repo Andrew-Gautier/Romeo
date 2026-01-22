@@ -17,7 +17,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend for cluster
 import matplotlib.pyplot as plt
-from torchmetrics.classification import BinaryAUROC, BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
+from sklearn.metrics import roc_auc_score, accuracy_score, precision_score, recall_score, f1_score
 import os
 import json
 import time
@@ -197,12 +197,13 @@ def train_epoch(model, iterator, optimizer, criterion, device, gradient_clip=1.0
 
 
 def evaluate(model, iterator, criterion, device):
-    """Evaluate model on a dataset (run on all ranks, aggregate on rank 0)."""
+    """Evaluate model on a dataset (run on all ranks, aggregate results)."""
     epoch_loss = 0
     model.eval()
     
     all_predictions = []
     all_labels = []
+    num_batches = 0
     
     # Only show progress bar on rank 0
     iterator_wrapped = tqdm(iterator, desc='Evaluating', leave=False) if is_main_process() else iterator
@@ -216,38 +217,81 @@ def evaluate(model, iterator, criterion, device):
             
             loss = criterion(predictions, batch_labels)
             epoch_loss += loss.item()
+            num_batches += 1
             
-            all_predictions.append(predictions.cpu())
-            all_labels.append(batch_labels.cpu())
+            all_predictions.append(predictions.detach())
+            all_labels.append(batch_labels.detach())
     
+    # Concatenate local predictions (on GPU)
     all_predictions = torch.cat(all_predictions)
     all_labels = torch.cat(all_labels)
     
-    # Compute metrics (only need full dataset, so do on rank 0)
-    if is_main_process():
-        metrics = {
-            'auroc': BinaryAUROC(),
-            'accuracy': BinaryAccuracy(),
-            'precision': BinaryPrecision(),
-            'recall': BinaryRecall(),
-            'f1': BinaryF1Score(),
-        }
+    # Gather predictions from all ranks using CUDA tensors
+    if dist.is_initialized():
+        world_size = dist.get_world_size()
         
-        for metric in metrics.values():
-            metric.update(all_predictions, all_labels.int())
+        # Get sizes from all ranks
+        local_size = torch.tensor([all_predictions.size(0)], device=device)
+        all_sizes = [torch.zeros(1, device=device, dtype=torch.long) for _ in range(world_size)]
+        dist.all_gather(all_sizes, local_size)
+        all_sizes = [int(s.item()) for s in all_sizes]
+        max_size = max(all_sizes)
         
-        results = {
-            'loss': epoch_loss / len(iterator),
-            'auroc': metrics['auroc'].compute().item(),
-            'accuracy': metrics['accuracy'].compute().item(),
-            'precision': metrics['precision'].compute().item(),
-            'recall': metrics['recall'].compute().item(),
-            'f1': metrics['f1'].compute().item(),
-        }
+        # Pad tensors to max size
+        padded_predictions = torch.zeros(max_size, device=device)
+        padded_labels = torch.zeros(max_size, device=device)
+        padded_predictions[:all_predictions.size(0)] = all_predictions
+        padded_labels[:all_labels.size(0)] = all_labels
+        
+        # Gather from all ranks
+        gathered_predictions = [torch.zeros(max_size, device=device) for _ in range(world_size)]
+        gathered_labels = [torch.zeros(max_size, device=device) for _ in range(world_size)]
+        dist.all_gather(gathered_predictions, padded_predictions)
+        dist.all_gather(gathered_labels, padded_labels)
+        
+        # Concatenate and trim to actual sizes
+        all_predictions_list = []
+        all_labels_list = []
+        for i in range(world_size):
+            all_predictions_list.append(gathered_predictions[i][:all_sizes[i]])
+            all_labels_list.append(gathered_labels[i][:all_sizes[i]])
+        
+        all_predictions = torch.cat(all_predictions_list)
+        all_labels = torch.cat(all_labels_list)
+        
+        # Average loss across ranks
+        loss_tensor = torch.tensor([epoch_loss / num_batches], device=device)
+        dist.all_reduce(loss_tensor, op=dist.ReduceOp.AVG)
+        avg_loss = loss_tensor.item()
     else:
-        results = {'loss': epoch_loss / len(iterator)}
+        avg_loss = epoch_loss / num_batches
     
-    return results, all_predictions, all_labels
+    # Move to CPU for metric computation
+    all_predictions_cpu = all_predictions.cpu().numpy()
+    all_labels_cpu = all_labels.cpu().numpy()
+    binary_preds = (all_predictions_cpu >= 0.5).astype(float)
+    
+    # Compute metrics using sklearn (no DDP sync issues)
+    try:
+        auroc = roc_auc_score(all_labels_cpu, all_predictions_cpu)
+    except ValueError:
+        auroc = 0.5  # Handle case with single class
+    
+    accuracy = accuracy_score(all_labels_cpu, binary_preds)
+    precision = precision_score(all_labels_cpu, binary_preds, zero_division=0)
+    recall = recall_score(all_labels_cpu, binary_preds, zero_division=0)
+    f1 = f1_score(all_labels_cpu, binary_preds, zero_division=0)
+    
+    results = {
+        'loss': avg_loss,
+        'auroc': auroc,
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1,
+    }
+    
+    return results, torch.from_numpy(all_predictions_cpu), torch.from_numpy(all_labels_cpu)
 
 
 def evaluate_per_cwe(predictions, labels, cwe_indices, idx_to_cwe, device):
@@ -258,30 +302,37 @@ def evaluate_per_cwe(predictions, labels, cwe_indices, idx_to_cwe, device):
     cwe_results = {}
     unique_cwes = torch.unique(cwe_indices)
     
-    auroc_metric = BinaryAUROC()
+    # Convert to numpy for sklearn
+    predictions_np = predictions.numpy() if isinstance(predictions, torch.Tensor) else predictions
+    labels_np = labels.numpy() if isinstance(labels, torch.Tensor) else labels
+    cwe_indices_np = cwe_indices.numpy() if isinstance(cwe_indices, torch.Tensor) else cwe_indices
     
     for cwe_idx in unique_cwes:
         cwe_idx = cwe_idx.item()
-        mask = cwe_indices == cwe_idx
+        mask = cwe_indices_np == cwe_idx
         
         if mask.sum() < 2:
             continue
         
-        cwe_preds = predictions[mask]
-        cwe_labels = labels[mask]
+        cwe_preds = predictions_np[mask]
+        cwe_labels = labels_np[mask]
         
-        if len(torch.unique(cwe_labels)) < 2:
+        if len(np.unique(cwe_labels)) < 2:
             continue
         
-        auroc_metric.reset()
-        auroc_metric.update(cwe_preds, cwe_labels.int())
+        try:
+            auroc = roc_auc_score(cwe_labels, cwe_preds)
+        except ValueError:
+            auroc = 0.5  # Handle edge cases
         
         cwe_name = idx_to_cwe.get(cwe_idx, f'CWE_{cwe_idx}')
         cwe_results[cwe_name] = {
-            'auroc': auroc_metric.compute().item(),
-            'n_samples': mask.sum().item(),
-            'n_positive': cwe_labels.sum().item(),
+            'auroc': auroc,
+            'n_samples': int(mask.sum()),
+            'n_positive': int(cwe_labels.sum()),
         }
+    
+    return cwe_results
     
     return cwe_results
 
