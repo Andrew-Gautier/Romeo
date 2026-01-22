@@ -1,46 +1,49 @@
 #!/bin/bash -lT
-#SBATCH -J dedup_exp
-#SBATCH --output=logs/experiment_%j.log
-#SBATCH --error=logs/experiment_%j.err
+#SBATCH -J dedup_ddp
+#SBATCH --output=logs/experiment_ddp_%j.log
+#SBATCH --error=logs/experiment_ddp_%j.err
 #SBATCH -N 1
-#SBATCH -c 4
+#SBATCH -c 32
 #SBATCH -n 1
 #SBATCH -p gpu_7day
 #SBATCH --gres=gpu:8
 #SBATCH --time=168:00:00
 
 # ============================================================================
-# Deduplication Experiment: LSTM Training on SimHash Datasets
+# Deduplication Experiment with DDP: LSTM Training on SimHash Datasets
 # ============================================================================
-# This script trains LSTM models on Juliet C SimHash datasets (k=1 to k=12)
-# with 5 different seeds each, and evaluates on an OOD dataset (Devign).
+# Uses DistributedDataParallel for efficient multi-GPU training.
 # ============================================================================
 
-# Exit on error
-set -e
+# Don't exit on error - we want to continue with other k values if one fails
+set +e
 
 # Configuration
 EXPERIMENT_NAME="Experiment_1"
 BASE_DIR="/scratch/aeg00011"
 TENSOR_DIR="${BASE_DIR}/${EXPERIMENT_NAME}"
-OUTPUT_DIR="${BASE_DIR}/experiments/${EXPERIMENT_NAME}"
+OUTPUT_DIR="${BASE_DIR}/experiments/${EXPERIMENT_NAME}_ddp"
 WEIGHTS_PATH="${BASE_DIR}/aix3-7b-base (1).pt"
-OOD_DATASET_PATTERN="devign_*_seed42"  # Pattern to match Devign dataset folder
+OOD_DATASET_PATTERN="devign_*_seed42"
 
 # Training parameters
 EPOCHS=50
 PATIENCE=5
-BATCH_SIZE=8
+BATCH_SIZE=16  # Per-GPU batch size (effective = 16 * 8 = 128)
 LEARNING_RATE=0.001
 SEEDS="42 123 456 789 1024"
 
-# K values to process (SimHash threshold)
-K_VALUES="2 3 4 5 6 7 8 9 10 11 12"
+# K values to process
+K_VALUES="1 2 3 4 5 6 7 8 9 10 11 12"
+
+# Number of GPUs
+NUM_GPUS=8
 
 # Create directories
 mkdir -p "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}/logs"
 mkdir -p "${OUTPUT_DIR}/summary"
+mkdir -p logs
 
 # Activate conda environment
 echo "============================================================"
@@ -48,7 +51,7 @@ echo "Activating conda environment..."
 echo "============================================================"
 conda activate python3112
 
-# Clear any leftover GPU memory from previous jobs
+# Clear GPU memory
 echo ""
 echo "============================================================"
 echo "Clearing GPU Memory..."
@@ -60,7 +63,6 @@ nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | while re
     fi
 done
 
-# Force PyTorch to release any cached memory
 python -c "
 import torch
 if torch.cuda.is_available():
@@ -70,80 +72,70 @@ if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
     print('GPU memory cleared on all devices')
 "
-echo ""
 
-# Debug: Check GPU visibility
+# GPU diagnostics
 echo ""
 echo "============================================================"
 echo "GPU Diagnostic Information"
 echo "============================================================"
 echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-not set}"
-echo "Number of GPUs detected by nvidia-smi:"
-nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader | wc -l
-echo ""
-echo "GPU Details and Memory Usage:"
 nvidia-smi --query-gpu=index,name,memory.total,memory.used,memory.free --format=csv
-echo ""
-echo "GPU Processes (if any):"
-nvidia-smi --query-compute-apps=pid,used_memory --format=csv 2>/dev/null || echo "No GPU processes running"
-echo ""
-python -c "import torch; print(f'PyTorch CUDA available: {torch.cuda.is_available()}'); print(f'PyTorch visible GPUs: {torch.cuda.device_count()}')"
+python -c "import torch; print(f'PyTorch CUDA: {torch.cuda.is_available()}, GPUs: {torch.cuda.device_count()}')"
 echo "============================================================"
-echo ""
-
 
 # Log start time
 START_TIME=$(date +%s)
+echo ""
 echo "============================================================"
-echo "Deduplication Experiment Started"
+echo "DDP Deduplication Experiment Started"
 echo "Time: $(date)"
 echo "============================================================"
 echo ""
 echo "Configuration:"
 echo "  Experiment Name: ${EXPERIMENT_NAME}"
-echo "  Tensor Directory: ${TENSOR_DIR}"
 echo "  Output Directory: ${OUTPUT_DIR}"
-echo "  Weights Path: ${WEIGHTS_PATH}"
+echo "  Number of GPUs: ${NUM_GPUS}"
+echo "  Batch Size (per GPU): ${BATCH_SIZE}"
+echo "  Effective Batch Size: $((BATCH_SIZE * NUM_GPUS))"
 echo "  Epochs: ${EPOCHS}"
 echo "  Patience: ${PATIENCE}"
-echo "  Batch Size: ${BATCH_SIZE}"
 echo "  Learning Rate: ${LEARNING_RATE}"
 echo "  Seeds: ${SEEDS}"
 echo "  K Values: ${K_VALUES}"
 echo ""
 
-# Find the OOD dataset directory
+# Find OOD dataset
 echo "============================================================"
 echo "Finding OOD dataset..."
 echo "============================================================"
 OOD_DIR=$(find "${TENSOR_DIR}" -maxdepth 1 -type d -name "${OOD_DATASET_PATTERN}" | head -n 1)
 
 if [ -z "${OOD_DIR}" ]; then
-    echo "ERROR: Could not find OOD dataset matching pattern '${OOD_DATASET_PATTERN}' in ${TENSOR_DIR}"
+    echo "ERROR: Could not find OOD dataset matching pattern '${OOD_DATASET_PATTERN}'"
     exit 1
 fi
 
 echo "Found OOD dataset: ${OOD_DIR}"
-echo ""
 
 # List available datasets
+echo ""
 echo "============================================================"
-echo "Available datasets in ${TENSOR_DIR}:"
+echo "Available datasets:"
 echo "============================================================"
 ls -la "${TENSOR_DIR}"
 echo ""
 
-# Function to run a single experiment
-run_single_experiment() {
+# Function to run single DDP experiment
+run_ddp_experiment() {
     local k=$1
     local dataset_pattern="juliet_c_simhash_k=${k}_*_seed42"
     
     echo ""
     echo "============================================================"
-    echo "Processing k=${k}"
+    echo "Processing k=${k} with DDP (${NUM_GPUS} GPUs)"
     echo "============================================================"
     
-    # Find the dataset directory
+    # Find dataset directory
     local dataset_dir=$(find "${TENSOR_DIR}" -maxdepth 1 -type d -name "${dataset_pattern}" | head -n 1)
     
     if [ -z "${dataset_dir}" ]; then
@@ -156,9 +148,15 @@ run_single_experiment() {
     
     echo "Dataset directory: ${dataset_dir}"
     echo "Output will be logged to: ${log_file}"
+    echo "Effective batch size: $((BATCH_SIZE * NUM_GPUS))"
     
-    # Run training with multi-GPU enabled
-    python "${BASE_DIR}/train_lstm.py" \
+    # Run training with torchrun for DDP
+    # --standalone: single-node training
+    # --nproc_per_node: number of processes (GPUs) per node
+    torchrun \
+        --standalone \
+        --nproc_per_node=${NUM_GPUS} \
+        "${BASE_DIR}/train_lstm_ddp.py" \
         --dataset-dir "${dataset_dir}" \
         --dataset-name "${dataset_name}" \
         --ood-dir "${OOD_DIR}" \
@@ -169,7 +167,6 @@ run_single_experiment() {
         --patience ${PATIENCE} \
         --lr ${LEARNING_RATE} \
         --seeds ${SEEDS} \
-        --multi-gpu \
         2>&1 | tee "${log_file}"
     
     local status=$?
@@ -180,19 +177,29 @@ run_single_experiment() {
         echo "✗ Failed k=${k} with status ${status}"
     fi
     
+    # Clear GPU memory between experiments
+    python -c "
+import torch
+if torch.cuda.is_available():
+    for i in range(torch.cuda.device_count()):
+        with torch.cuda.device(i):
+            torch.cuda.empty_cache()
+    print('GPU memory cleared')
+"
+    
     return $status
 }
 
-# Run experiments for each k value
+# Run experiments
 echo "============================================================"
-echo "Starting experiments..."
+echo "Starting DDP experiments..."
 echo "============================================================"
 
 successful=0
 failed=0
 
 for k in ${K_VALUES}; do
-    if run_single_experiment $k; then
+    if run_ddp_experiment $k; then
         successful=$((successful + 1))
     else
         failed=$((failed + 1))
@@ -214,16 +221,18 @@ SUMMARY_FILE="${OUTPUT_DIR}/summary/experiment_summary.txt"
 
 cat > "${SUMMARY_FILE}" << EOF
 ============================================================
-DEDUPLICATION EXPERIMENT SUMMARY
+DDP DEDUPLICATION EXPERIMENT SUMMARY
 ============================================================
 Experiment: ${EXPERIMENT_NAME}
 Date: $(date)
 Total Runtime: ${ELAPSED_FORMATTED}
 
 Configuration:
+  Number of GPUs: ${NUM_GPUS}
+  Batch Size (per GPU): ${BATCH_SIZE}
+  Effective Batch Size: $((BATCH_SIZE * NUM_GPUS))
   Epochs: ${EPOCHS}
   Patience: ${PATIENCE}
-  Batch Size: ${BATCH_SIZE}
   Learning Rate: ${LEARNING_RATE}
   Seeds: ${SEEDS}
 
@@ -236,13 +245,12 @@ OOD Dataset: ${OOD_DIR}
 Individual Results:
 EOF
 
-# Append individual experiment results to summary
+# Append individual results
 for k in ${K_VALUES}; do
     results_file="${OUTPUT_DIR}/juliet_c_simhash_k=${k}/results/experiment_results.json"
     if [ -f "${results_file}" ]; then
         echo "" >> "${SUMMARY_FILE}"
         echo "--- k=${k} ---" >> "${SUMMARY_FILE}"
-        # Extract key metrics using python
         python -c "
 import json
 with open('${results_file}') as f:
@@ -285,7 +293,7 @@ echo "CSV results saved to: ${CSV_FILE}"
 # Print final summary
 echo ""
 echo "============================================================"
-echo "EXPERIMENT COMPLETE"
+echo "DDP EXPERIMENT COMPLETE"
 echo "============================================================"
 echo ""
 cat "${SUMMARY_FILE}"
@@ -296,5 +304,4 @@ echo "  Summary: ${SUMMARY_FILE}"
 echo "  CSV: ${CSV_FILE}"
 echo "  Logs: ${OUTPUT_DIR}/logs/"
 echo "  Models: ${OUTPUT_DIR}/juliet_c_simhash_k=*/results/"
-echo "  Plots: ${OUTPUT_DIR}/juliet_c_simhash_k=*/plots/"
 echo "============================================================"

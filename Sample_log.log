@@ -1,0 +1,129 @@
+============================================================
+Activating conda environment...
+============================================================
+
+============================================================
+Clearing GPU Memory...
+============================================================
+GPU memory cleared on all devices
+
+
+============================================================
+GPU Diagnostic Information
+============================================================
+CUDA_VISIBLE_DEVICES: 0,1,2,3,4,5,6,7
+Number of GPUs detected by nvidia-smi:
+8
+
+GPU Details and Memory Usage:
+index, name, memory.total [MiB], memory.used [MiB], memory.free [MiB]
+0, NVIDIA A100-SXM4-80GB, 81920 MiB, 0 MiB, 81153 MiB
+1, NVIDIA A100-SXM4-80GB, 81920 MiB, 0 MiB, 81153 MiB
+2, NVIDIA A100-SXM4-80GB, 81920 MiB, 0 MiB, 81153 MiB
+3, NVIDIA A100-SXM4-80GB, 81920 MiB, 0 MiB, 81153 MiB
+4, NVIDIA A100-SXM4-80GB, 81920 MiB, 0 MiB, 81153 MiB
+5, NVIDIA A100-SXM4-80GB, 81920 MiB, 0 MiB, 81153 MiB
+6, NVIDIA A100-SXM4-80GB, 81920 MiB, 0 MiB, 81153 MiB
+7, NVIDIA A100-SXM4-80GB, 81920 MiB, 0 MiB, 81153 MiB
+
+GPU Processes (if any):
+pid, used_gpu_memory [MiB]
+
+PyTorch CUDA available: True
+PyTorch visible GPUs: 8
+============================================================
+
+============================================================
+Deduplication Experiment Started
+Time: Sun Jan 18 16:38:04 EST 2026
+============================================================
+
+Configuration:
+  Experiment Name: Experiment_1
+  Tensor Directory: /scratch/aeg00011/Experiment_1
+  Output Directory: /scratch/aeg00011/experiments/Experiment_1
+  Weights Path: /scratch/aeg00011/aix3-7b-base (1).pt
+  Epochs: 50
+  Patience: 5
+  Batch Size: 8
+  Learning Rate: 0.001
+  Seeds: 42 123 456 789 1024
+  K Values: 1 2 3 4 5 6 7 8 9 10 11 12
+
+============================================================
+Finding OOD dataset...
+============================================================
+Found OOD dataset: /scratch/aeg00011/Experiment_1/devign_ood_20260113_170845_seed42
+
+============================================================
+Available datasets in /scratch/aeg00011/Experiment_1:
+============================================================
+total 60
+drwxr-sr-x 15 aeg00011 its-rc-dgdzielski 4096 Jan 15 13:30 .
+drwx--S--- 10 aeg00011 its-rc-dgdzielski 4096 Jan 18 15:57 ..
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 14 09:53 devign_ood_20260113_170845_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=10_20260112_185347_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=11_20260112_185348_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=12_20260112_185348_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=1_20260112_185235_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=2_20260112_185257_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=3_20260112_185313_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=4_20260112_185324_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=5_20260112_185332_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=6_20260112_185338_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=7_20260112_185342_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=8_20260112_185344_seed42
+drwxr-sr-x  2 aeg00011 its-rc-dgdzielski 4096 Jan 13 16:10 juliet_c_simhash_k=9_20260112_185346_seed42
+
+============================================================
+Starting experiments...
+============================================================
+
+============================================================
+Processing k=1
+============================================================
+Dataset directory: /scratch/aeg00011/Experiment_1/juliet_c_simhash_k=1_20260112_185235_seed42
+Output will be logged to: /scratch/aeg00011/experiments/Experiment_1/logs/juliet_c_simhash_k=1.log
+Multi-GPU mode: effective batch size = 8 x 8 = 64
+Multi-GPU training enabled
+PyTorch sees 8 GPUs:
+  GPU 0: NVIDIA A100-SXM4-80GB
+    Memory: 79.3 GB
+  GPU 1: NVIDIA A100-SXM4-80GB
+    Memory: 79.3 GB
+  GPU 2: NVIDIA A100-SXM4-80GB
+    Memory: 79.3 GB
+  GPU 3: NVIDIA A100-SXM4-80GB
+    Memory: 79.3 GB
+  GPU 4: NVIDIA A100-SXM4-80GB
+    Memory: 79.3 GB
+  GPU 5: NVIDIA A100-SXM4-80GB
+    Memory: 79.3 GB
+  GPU 6: NVIDIA A100-SXM4-80GB
+    Memory: 79.3 GB
+  GPU 7: NVIDIA A100-SXM4-80GB
+    Memory: 79.3 GB
+Loading pretrained weights from /scratch/aeg00011/aix3-7b-base (1).pt...
+Pretrained weights shape: torch.Size([49152, 4096])
+
+Loading dataset from /scratch/aeg00011/Experiment_1/juliet_c_simhash_k=1_20260112_185235_seed42...
+Train batches: 1927, Val batches: 554, Test batches: 273
+
+Loading OOD dataset from /scratch/aeg00011/Experiment_1/devign_ood_20260113_170845_seed42...
+OOD test batches: 3028
+
+############################################################
+SEED 42
+############################################################
+Using DataParallel with 8 GPUs
+
+============================================================
+Training with seed 42
+============================================================
+
+Training:   0%|          | 0/1927 [00:00<?, ?it/s]
+Training:   0%|          | 1/1927 [00:09<5:04:25,  9.48s/it]
+Training:   0%|          | 2/1927 [00:10<2:32:07,  4.74s/it]
+Training:   0%|          | 3/1927 [00:12<1:43:20,  3.22s/it]
+Training:   0%|          | 4/1927 [00:13<1:19:32,  2.48s/it]
+Training:   0%|          | 5/1927 [00:15<1:06:28,  2.08s/it]
