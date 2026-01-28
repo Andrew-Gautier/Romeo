@@ -19,6 +19,7 @@ matplotlib.use('Agg')  # Non-interactive backend for cluster
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score, accuracy_score, precision_score, recall_score, f1_score
 import os
+import glob
 import json
 import time
 import argparse
@@ -686,6 +687,27 @@ def run_experiment(
         print_rank0(f"SEED {seed}")
         print_rank0(f"{'#'*60}")
         
+        # Check if this seed was already completed
+        model_path = os.path.join(results_dir, f'model_seed{seed}.pt')
+        if os.path.exists(model_path):
+            print_rank0(f"Seed {seed} already completed, loading existing results...")
+            if is_main_process():
+                # Load existing results
+                checkpoint = torch.load(model_path, map_location='cpu')
+                all_results['seeds'][seed] = {
+                    'history': checkpoint.get('history', {}),
+                    'test': checkpoint.get('test_results', {}),
+                    'ood': checkpoint.get('ood_results', {}),
+                    'per_cwe': {},  # Per-CWE not saved in checkpoint, will be empty
+                }
+                print(f"  Loaded: Test AUROC={checkpoint.get('test_results', {}).get('auroc', 'N/A'):.4f}, "
+                      f"OOD AUROC={checkpoint.get('ood_results', {}).get('auroc', 'N/A'):.4f}")
+            # Synchronize before next seed
+            if dist.is_initialized():
+                dist.barrier()
+            print_rank0(f"Skipped seed {seed} (already completed)")
+            continue
+        
         # Train model
         model, history = train_model(
             train_loader, train_sampler, val_loader, config, pretrained_weights,
@@ -764,7 +786,31 @@ def run_experiment(
     
     # Final aggregation and saving (rank 0 only)
     if is_main_process():
+        # Also load any other existing seed results not in current run
+        # This ensures we aggregate ALL completed seeds
+        existing_model_files = glob.glob(os.path.join(results_dir, 'model_seed*.pt'))
+        for model_file in existing_model_files:
+            # Extract seed number from filename
+            import re
+            match = re.search(r'model_seed(\d+)\.pt', model_file)
+            if match:
+                existing_seed = int(match.group(1))
+                if existing_seed not in all_results['seeds']:
+                    print(f"Loading additional existing seed {existing_seed}...")
+                    checkpoint = torch.load(model_file, map_location='cpu')
+                    all_results['seeds'][existing_seed] = {
+                        'history': checkpoint.get('history', {}),
+                        'test': checkpoint.get('test_results', {}),
+                        'ood': checkpoint.get('ood_results', {}),
+                        'per_cwe': {},
+                    }
+        
+        # Report which seeds are included
+        completed_seeds = sorted(all_results['seeds'].keys())
+        print(f"\nAggregating results from {len(completed_seeds)} seeds: {completed_seeds}")
+        
         all_results['aggregate'] = compute_aggregate_stats(all_results['seeds'])
+        all_results['completed_seeds'] = completed_seeds
         save_per_cwe_csv(all_results['seeds'], results_dir)
         
         results_path = os.path.join(results_dir, 'experiment_results.json')
@@ -775,7 +821,7 @@ def run_experiment(
         print("EXPERIMENT COMPLETE")
         print(f"{'='*60}")
         print(f"Results saved to: {results_dir}")
-        print(f"\nAggregate Results:")
+        print(f"\nAggregate Results ({len(completed_seeds)} seeds):")
         print(f"  Test AUROC: {all_results['aggregate']['test_auroc_mean']:.4f} ± {all_results['aggregate']['test_auroc_std']:.4f}")
         print(f"  Test F1: {all_results['aggregate']['test_f1_mean']:.4f} ± {all_results['aggregate']['test_f1_std']:.4f}")
         print(f"  OOD AUROC: {all_results['aggregate']['ood_auroc_mean']:.4f} ± {all_results['aggregate']['ood_auroc_std']:.4f}")
