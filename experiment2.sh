@@ -1,7 +1,7 @@
 #!/bin/bash -lT
-#SBATCH -J dedup_ddp
-#SBATCH --output=logs/experiment_ddp_%j.log
-#SBATCH --error=logs/experiment_ddp_%j.err
+#SBATCH -J exp2_deepseek
+#SBATCH --output=logs/experiment2_ddp_%j.log
+#SBATCH --error=logs/experiment2_ddp_%j.err
 #SBATCH -N 1
 #SBATCH -c 32
 #SBATCH -n 1
@@ -13,17 +13,22 @@
 # Deduplication Experiment with DDP: LSTM Training on SimHash Datasets
 # ============================================================================
 # Uses DistributedDataParallel for efficient multi-GPU training.
+# Experiment 2: DeepSeek Coder embeddings from HuggingFace
 # ============================================================================
 
 # Don't exit on error - we want to continue with other k values if one fails
 set +e
 
 # Configuration
-EXPERIMENT_NAME="Experiment_1"
+EXPERIMENT_NAME="Experiment_2"
 BASE_DIR="/scratch/aeg00011"
 TENSOR_DIR="${BASE_DIR}/${EXPERIMENT_NAME}"
 OUTPUT_DIR="${BASE_DIR}/experiments/${EXPERIMENT_NAME}"
-WEIGHTS_PATH="${BASE_DIR}/aix3-7b-base (1).pt"
+
+# HuggingFace model configuration
+HF_CACHE_DIR="${BASE_DIR}/huggingface"
+MODEL_NAME="deepseek-coder"  # Options: deepseek-coder, codellama
+
 OOD_DATASET_PATTERN="devign_*_seed42"
 
 # Training parameters
@@ -49,7 +54,7 @@ mkdir -p logs
 echo "============================================================"
 echo "Activating conda environment..."
 echo "============================================================"
-conda activate python3112
+conda activate python3112hf
 
 # Clear GPU memory
 echo ""
@@ -94,6 +99,8 @@ echo ""
 echo "Configuration:"
 echo "  Experiment Name: ${EXPERIMENT_NAME}"
 echo "  Output Directory: ${OUTPUT_DIR}"
+echo "  HuggingFace Cache: ${HF_CACHE_DIR}"
+echo "  Model Name: ${MODEL_NAME}"
 echo "  Number of GPUs: ${NUM_GPUS}"
 echo "  Batch Size (per GPU): ${BATCH_SIZE}"
 echo "  Effective Batch Size: $((BATCH_SIZE * NUM_GPUS))"
@@ -156,12 +163,13 @@ run_ddp_experiment() {
     torchrun \
         --standalone \
         --nproc_per_node=${NUM_GPUS} \
-        "${BASE_DIR}/train_lstm_ddp.py" \
+        "${BASE_DIR}/train_lstm_ddp2.py" \
         --dataset-dir "${dataset_dir}" \
         --dataset-name "${dataset_name}" \
         --ood-dir "${OOD_DIR}" \
         --output-dir "${OUTPUT_DIR}" \
-        --weights "${WEIGHTS_PATH}" \
+        --hf-cache-dir "${HF_CACHE_DIR}" \
+        --model-name "${MODEL_NAME}" \
         --batch-size ${BATCH_SIZE} \
         --epochs ${EPOCHS} \
         --patience ${PATIENCE} \
@@ -228,6 +236,8 @@ Date: $(date)
 Total Runtime: ${ELAPSED_FORMATTED}
 
 Configuration:
+  HuggingFace Cache: ${HF_CACHE_DIR}
+  Model Name: ${MODEL_NAME}
   Number of GPUs: ${NUM_GPUS}
   Batch Size (per GPU): ${BATCH_SIZE}
   Effective Batch Size: $((BATCH_SIZE * NUM_GPUS))
