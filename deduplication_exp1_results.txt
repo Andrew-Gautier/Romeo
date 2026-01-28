@@ -1,0 +1,95 @@
+============================================================
+DDP DEDUPLICATION EXPERIMENT SUMMARY
+============================================================
+Experiment: Experiment_1
+Date: Fri Jan 23 06:26:08 EST 2026
+Total Runtime: 17:23:33
+
+Configuration:
+  Number of GPUs: 8
+  Batch Size (per GPU): 16
+  Effective Batch Size: 128
+  Epochs: 50
+  Patience: 5
+  Learning Rate: 0.001
+  Seeds: 1 2 3 4 5
+
+Results:
+  Successful: 12/12
+  Failed: 0/12
+
+OOD Dataset: /scratch/aeg00011/Experiment_1/devign_ood_20260113_170845_seed42
+
+Individual Results:
+
+--- k=1 ---
+  Test AUROC: 0.9993 ± 0.0008
+  Test F1: 0.9978 ± 0.0007
+  OOD AUROC: 0.5083 ± 0.0096
+  OOD F1: 0.5203 ± 0.1177
+
+--- k=2 ---
+  Test AUROC: 0.9998 ± 0.0001
+  Test F1: 0.9952 ± 0.0013
+  OOD AUROC: 0.5037 ± 0.0181
+  OOD F1: 0.5275 ± 0.0836
+
+--- k=3 ---
+  Test AUROC: 0.9991 ± 0.0005
+  Test F1: 0.9964 ± 0.0018
+  OOD AUROC: 0.5067 ± 0.0120
+  OOD F1: 0.5380 ± 0.0687
+
+--- k=4 ---
+  Test AUROC: 0.9996 ± 0.0004
+  Test F1: 0.9951 ± 0.0038
+  OOD AUROC: 0.4992 ± 0.0142
+  OOD F1: 0.5023 ± 0.1065
+
+--- k=5 ---
+  Test AUROC: 0.9952 ± 0.0014
+  Test F1: 0.9828 ± 0.0047
+  OOD AUROC: 0.4990 ± 0.0087
+  OOD F1: 0.4966 ± 0.0866
+
+--- k=6 ---
+  Test AUROC: 0.9907 ± 0.0029
+  Test F1: 0.9780 ± 0.0057
+  OOD AUROC: 0.4804 ± 0.0092
+  OOD F1: 0.4539 ± 0.0875
+
+--- k=7 ---
+  Test AUROC: 0.9758 ± 0.0262
+  Test F1: 0.9458 ± 0.0435
+  OOD AUROC: 0.4818 ± 0.0049
+  OOD F1: 0.4644 ± 0.1301
+
+--- k=8 ---
+  Test AUROC: 0.9764 ± 0.0093
+  Test F1: 0.9253 ± 0.0134
+  OOD AUROC: 0.4932 ± 0.0161
+  OOD F1: 0.3762 ± 0.1563
+
+--- k=9 ---
+  Test AUROC: 0.9005 ± 0.1281
+  Test F1: 0.7315 ± 0.3672
+  OOD AUROC: 0.4774 ± 0.0057
+  OOD F1: 0.3531 ± 0.1932
+
+--- k=10 ---
+  Test AUROC: 0.8816 ± 0.0779
+  Test F1: 0.8132 ± 0.0775
+  OOD AUROC: 0.4885 ± 0.0257
+  OOD F1: 0.4995 ± 0.0972
+
+--- k=11 ---
+  Test AUROC: 0.7148 ± 0.0898
+  Test F1: 0.7395 ± 0.0533
+  OOD AUROC: 0.4855 ± 0.0162
+  OOD F1: 0.6185 ± 0.0962
+
+--- k=12 ---
+  Test AUROC: 0.7394 ± 0.0063
+  Test F1: 0.7785 ± 0.0311
+  OOD AUROC: 0.5053 ± 0.0217
+  OOD F1: 0.6532 ± 0.0171
