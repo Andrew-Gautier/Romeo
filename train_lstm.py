@@ -16,9 +16,9 @@ import time
 import argparse
 from datetime import datetime, timedelta
 from tqdm import tqdm
-from gpu_utils import select_best_gpu, clear_gpu_memory
+from hpc.gpu_utils import select_best_gpu, clear_gpu_memory
 
-from classifier import LSTMClassifier, create_model
+from binary_classifier import LSTMClassifier, create_model
 
 
 # ============================================================================

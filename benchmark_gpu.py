@@ -17,7 +17,7 @@ import argparse
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 
-from classifier import LSTMClassifier, create_model
+from binary_classifier import LSTMClassifier, create_model
 
 
 def get_gpu_memory_info():

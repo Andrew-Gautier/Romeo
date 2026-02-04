@@ -15,7 +15,7 @@ import time
 import argparse
 from tqdm import tqdm
 
-from classifier import LSTMClassifier, create_model
+from binary_classifier import LSTMClassifier, create_model
 
 
 # ============================================================================
