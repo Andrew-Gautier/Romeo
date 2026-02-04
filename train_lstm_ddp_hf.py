@@ -32,7 +32,7 @@ from tqdm import tqdm
 from safetensors.torch import load_file as load_safetensors
 from transformers import AutoConfig
 
-from classifier import LSTMClassifier, create_model
+from binary_classifier import LSTMClassifier, create_model
 
 
 # ============================================================================

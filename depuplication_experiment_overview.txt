@@ -1,9 +1,0 @@
-Abstract:
-Split each juliet_c dataset from k=1 through k=12 into a 70/20/10 train/validation/test split. These are located in simhash_datasets/juliet_c_simhash_k=1.db 
-Balance classes and balance cve's. Attempt to create as large a dataset from each group as possible by setting the maximum class value
-to 200,000. Information about the CVE's should be saved so that the results on the test set can be shown per CVE as well. All metadata about the data should be saved. 
-
-Also, take create a balanced class, but not balanced cve, dataset of devign in datasets/devign . Save metadata about the ratio of positive to negative samples. 
-
-Put all of these into a folder titled Experiment_1 in tensors directory. 
-
