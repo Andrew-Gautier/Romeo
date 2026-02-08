@@ -1,0 +1,942 @@
+============================================================
+GPU UTILIZATION SUMMARY - ALL EXPERIMENTS
+============================================================
+Date: Sun Feb  8 09:16:43 EST 2026
+Monitoring Interval: 30s
+
+============================================================
+GPU Statistics Summary for k=1
+============================================================
+Total samples: 7120
+Duration: 2026-02-05 10:18:11 to 2026-02-05 17:45:08
+
+GPU 0:
+  Utilization (GPU):    98.5% (mean), 100.0% (max)
+  Utilization (Memory): 21.5% (mean), 52.0% (max)
+  Memory Used:          58548 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          53.1°C (mean), 59.0°C (max)
+  Power Draw:           219.7W (mean), 447.0W (max)
+
+GPU 1:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 16.4% (mean), 52.0% (max)
+  Memory Used:          34858 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          41.9°C (mean), 50.0°C (max)
+  Power Draw:           191.0W (mean), 432.6W (max)
+
+GPU 2:
+  Utilization (GPU):    99.3% (mean), 100.0% (max)
+  Utilization (Memory): 16.0% (mean), 52.0% (max)
+  Memory Used:          34858 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.9°C (mean), 48.0°C (max)
+  Power Draw:           183.8W (mean), 427.0W (max)
+
+GPU 3:
+  Utilization (GPU):    99.3% (mean), 100.0% (max)
+  Utilization (Memory): 16.2% (mean), 52.0% (max)
+  Memory Used:          34858 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          50.8°C (mean), 60.0°C (max)
+  Power Draw:           192.1W (mean), 435.9W (max)
+
+GPU 4:
+  Utilization (GPU):    99.4% (mean), 100.0% (max)
+  Utilization (Memory): 16.2% (mean), 51.0% (max)
+  Memory Used:          34858 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          49.7°C (mean), 59.0°C (max)
+  Power Draw:           192.9W (mean), 441.2W (max)
+
+GPU 5:
+  Utilization (GPU):    97.4% (mean), 100.0% (max)
+  Utilization (Memory): 16.8% (mean), 52.0% (max)
+  Memory Used:          34858 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.4°C (mean), 48.0°C (max)
+  Power Draw:           193.4W (mean), 433.1W (max)
+
+GPU 6:
+  Utilization (GPU):    99.6% (mean), 100.0% (max)
+  Utilization (Memory): 16.0% (mean), 52.0% (max)
+  Memory Used:          34858 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          38.0°C (mean), 46.0°C (max)
+  Power Draw:           183.4W (mean), 429.6W (max)
+
+GPU 7:
+  Utilization (GPU):    97.3% (mean), 100.0% (max)
+  Utilization (Memory): 16.7% (mean), 52.0% (max)
+  Memory Used:          34714 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          48.9°C (mean), 58.0°C (max)
+  Power Draw:           203.8W (mean), 438.4W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 98.7%
+  Average Memory Utilization: 17.0%
+  Average Power Draw: 195.0W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 60.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=2
+============================================================
+Total samples: 7024
+Duration: 2026-02-05 17:45:59 to 2026-02-06 01:06:48
+
+GPU 0:
+  Utilization (GPU):    98.4% (mean), 100.0% (max)
+  Utilization (Memory): 22.2% (mean), 52.0% (max)
+  Memory Used:          58454 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          53.2°C (mean), 59.0°C (max)
+  Power Draw:           225.3W (mean), 442.1W (max)
+
+GPU 1:
+  Utilization (GPU):    98.8% (mean), 100.0% (max)
+  Utilization (Memory): 16.7% (mean), 52.0% (max)
+  Memory Used:          34684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          41.9°C (mean), 50.0°C (max)
+  Power Draw:           193.9W (mean), 428.1W (max)
+
+GPU 2:
+  Utilization (GPU):    99.2% (mean), 100.0% (max)
+  Utilization (Memory): 16.4% (mean), 51.0% (max)
+  Memory Used:          34684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.9°C (mean), 48.0°C (max)
+  Power Draw:           186.8W (mean), 430.5W (max)
+
+GPU 3:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 16.3% (mean), 52.0% (max)
+  Memory Used:          34684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          50.9°C (mean), 61.0°C (max)
+  Power Draw:           196.3W (mean), 438.8W (max)
+
+GPU 4:
+  Utilization (GPU):    97.3% (mean), 100.0% (max)
+  Utilization (Memory): 16.9% (mean), 52.0% (max)
+  Memory Used:          34684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          49.8°C (mean), 59.0°C (max)
+  Power Draw:           197.1W (mean), 435.0W (max)
+
+GPU 5:
+  Utilization (GPU):    99.4% (mean), 100.0% (max)
+  Utilization (Memory): 17.0% (mean), 52.0% (max)
+  Memory Used:          34684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.4°C (mean), 48.0°C (max)
+  Power Draw:           186.3W (mean), 431.5W (max)
+
+GPU 6:
+  Utilization (GPU):    99.4% (mean), 100.0% (max)
+  Utilization (Memory): 16.9% (mean), 52.0% (max)
+  Memory Used:          34684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          38.1°C (mean), 45.0°C (max)
+  Power Draw:           179.9W (mean), 420.2W (max)
+
+GPU 7:
+  Utilization (GPU):    97.6% (mean), 100.0% (max)
+  Utilization (Memory): 16.9% (mean), 52.0% (max)
+  Memory Used:          34540 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          49.0°C (mean), 58.0°C (max)
+  Power Draw:           201.6W (mean), 431.5W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 98.6%
+  Average Memory Utilization: 17.4%
+  Average Power Draw: 195.9W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 61.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=3
+============================================================
+Total samples: 7320
+Duration: 2026-02-06 01:07:14 to 2026-02-06 08:46:38
+
+GPU 0:
+  Utilization (GPU):    98.3% (mean), 100.0% (max)
+  Utilization (Memory): 22.2% (mean), 52.0% (max)
+  Memory Used:          58359 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          53.2°C (mean), 58.0°C (max)
+  Power Draw:           229.9W (mean), 441.7W (max)
+
+GPU 1:
+  Utilization (GPU):    99.0% (mean), 100.0% (max)
+  Utilization (Memory): 16.7% (mean), 52.0% (max)
+  Memory Used:          34829 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          42.1°C (mean), 50.0°C (max)
+  Power Draw:           193.0W (mean), 430.9W (max)
+
+GPU 2:
+  Utilization (GPU):    98.6% (mean), 100.0% (max)
+  Utilization (Memory): 17.4% (mean), 52.0% (max)
+  Memory Used:          34829 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          41.1°C (mean), 48.0°C (max)
+  Power Draw:           194.7W (mean), 421.6W (max)
+
+GPU 3:
+  Utilization (GPU):    98.8% (mean), 100.0% (max)
+  Utilization (Memory): 17.1% (mean), 52.0% (max)
+  Memory Used:          34829 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          51.0°C (mean), 61.0°C (max)
+  Power Draw:           197.7W (mean), 436.6W (max)
+
+GPU 4:
+  Utilization (GPU):    97.2% (mean), 100.0% (max)
+  Utilization (Memory): 17.2% (mean), 52.0% (max)
+  Memory Used:          34829 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          49.7°C (mean), 59.0°C (max)
+  Power Draw:           193.9W (mean), 448.3W (max)
+
+GPU 5:
+  Utilization (GPU):    99.0% (mean), 100.0% (max)
+  Utilization (Memory): 16.9% (mean), 52.0% (max)
+  Memory Used:          34829 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.4°C (mean), 48.0°C (max)
+  Power Draw:           186.6W (mean), 426.4W (max)
+
+GPU 6:
+  Utilization (GPU):    99.4% (mean), 100.0% (max)
+  Utilization (Memory): 16.9% (mean), 52.0% (max)
+  Memory Used:          34829 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          38.1°C (mean), 46.0°C (max)
+  Power Draw:           178.9W (mean), 430.8W (max)
+
+GPU 7:
+  Utilization (GPU):    99.4% (mean), 100.0% (max)
+  Utilization (Memory): 17.1% (mean), 52.0% (max)
+  Memory Used:          34686 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          48.8°C (mean), 58.0°C (max)
+  Power Draw:           196.5W (mean), 443.0W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 98.7%
+  Average Memory Utilization: 17.7%
+  Average Power Draw: 196.4W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 61.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=4
+============================================================
+Total samples: 6824
+Duration: 2026-02-06 08:47:11 to 2026-02-06 15:55:25
+
+GPU 0:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 21.9% (mean), 51.0% (max)
+  Memory Used:          58822 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          53.1°C (mean), 58.0°C (max)
+  Power Draw:           223.2W (mean), 447.1W (max)
+
+GPU 1:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 16.1% (mean), 52.0% (max)
+  Memory Used:          34463 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          41.5°C (mean), 50.0°C (max)
+  Power Draw:           190.5W (mean), 421.1W (max)
+
+GPU 2:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 16.0% (mean), 52.0% (max)
+  Memory Used:          34463 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.5°C (mean), 48.0°C (max)
+  Power Draw:           191.4W (mean), 406.7W (max)
+
+GPU 3:
+  Utilization (GPU):    99.3% (mean), 100.0% (max)
+  Utilization (Memory): 15.9% (mean), 52.0% (max)
+  Memory Used:          34463 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          50.6°C (mean), 60.0°C (max)
+  Power Draw:           197.0W (mean), 437.9W (max)
+
+GPU 4:
+  Utilization (GPU):    97.4% (mean), 100.0% (max)
+  Utilization (Memory): 16.1% (mean), 52.0% (max)
+  Memory Used:          34463 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          49.4°C (mean), 59.0°C (max)
+  Power Draw:           193.8W (mean), 440.0W (max)
+
+GPU 5:
+  Utilization (GPU):    97.3% (mean), 100.0% (max)
+  Utilization (Memory): 16.1% (mean), 52.0% (max)
+  Memory Used:          34463 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.1°C (mean), 47.0°C (max)
+  Power Draw:           192.9W (mean), 433.9W (max)
+
+GPU 6:
+  Utilization (GPU):    99.5% (mean), 100.0% (max)
+  Utilization (Memory): 16.3% (mean), 52.0% (max)
+  Memory Used:          34463 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          37.8°C (mean), 45.0°C (max)
+  Power Draw:           178.6W (mean), 433.2W (max)
+
+GPU 7:
+  Utilization (GPU):    99.4% (mean), 100.0% (max)
+  Utilization (Memory): 16.5% (mean), 51.0% (max)
+  Memory Used:          34319 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          48.6°C (mean), 58.0°C (max)
+  Power Draw:           197.5W (mean), 442.7W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 98.7%
+  Average Memory Utilization: 16.9%
+  Average Power Draw: 195.6W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 60.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=5
+============================================================
+Total samples: 6504
+Duration: 2026-02-06 15:55:52 to 2026-02-06 22:43:59
+
+GPU 0:
+  Utilization (GPU):    98.7% (mean), 100.0% (max)
+  Utilization (Memory): 21.1% (mean), 51.0% (max)
+  Memory Used:          58583 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          52.8°C (mean), 58.0°C (max)
+  Power Draw:           221.6W (mean), 446.4W (max)
+
+GPU 1:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 16.0% (mean), 51.0% (max)
+  Memory Used:          33939 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          41.3°C (mean), 50.0°C (max)
+  Power Draw:           188.7W (mean), 428.1W (max)
+
+GPU 2:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 15.9% (mean), 52.0% (max)
+  Memory Used:          33939 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.4°C (mean), 48.0°C (max)
+  Power Draw:           185.1W (mean), 431.8W (max)
+
+GPU 3:
+  Utilization (GPU):    98.4% (mean), 100.0% (max)
+  Utilization (Memory): 15.8% (mean), 52.0% (max)
+  Memory Used:          33939 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          50.3°C (mean), 60.0°C (max)
+  Power Draw:           189.9W (mean), 427.9W (max)
+
+GPU 4:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 16.0% (mean), 51.0% (max)
+  Memory Used:          33939 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          49.1°C (mean), 59.0°C (max)
+  Power Draw:           186.6W (mean), 445.6W (max)
+
+GPU 5:
+  Utilization (GPU):    96.9% (mean), 100.0% (max)
+  Utilization (Memory): 16.2% (mean), 52.0% (max)
+  Memory Used:          33939 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.0°C (mean), 48.0°C (max)
+  Power Draw:           183.6W (mean), 433.1W (max)
+
+GPU 6:
+  Utilization (GPU):    97.0% (mean), 100.0% (max)
+  Utilization (Memory): 15.6% (mean), 52.0% (max)
+  Memory Used:          33939 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          37.7°C (mean), 46.0°C (max)
+  Power Draw:           184.3W (mean), 427.4W (max)
+
+GPU 7:
+  Utilization (GPU):    96.8% (mean), 100.0% (max)
+  Utilization (Memory): 16.3% (mean), 52.0% (max)
+  Memory Used:          33796 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          48.2°C (mean), 58.0°C (max)
+  Power Draw:           196.8W (mean), 438.0W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 98.1%
+  Average Memory Utilization: 16.6%
+  Average Power Draw: 192.1W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 60.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=6
+============================================================
+Total samples: 6008
+Duration: 2026-02-06 22:44:39 to 2026-02-07 05:01:36
+
+GPU 0:
+  Utilization (GPU):    97.8% (mean), 100.0% (max)
+  Utilization (Memory): 22.2% (mean), 52.0% (max)
+  Memory Used:          58960 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          52.6°C (mean), 58.0°C (max)
+  Power Draw:           223.2W (mean), 451.4W (max)
+
+GPU 1:
+  Utilization (GPU):    98.1% (mean), 100.0% (max)
+  Utilization (Memory): 15.5% (mean), 51.0% (max)
+  Memory Used:          32721 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.8°C (mean), 49.0°C (max)
+  Power Draw:           183.2W (mean), 429.0W (max)
+
+GPU 2:
+  Utilization (GPU):    98.5% (mean), 100.0% (max)
+  Utilization (Memory): 15.4% (mean), 51.0% (max)
+  Memory Used:          32721 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          39.8°C (mean), 47.0°C (max)
+  Power Draw:           178.3W (mean), 392.7W (max)
+
+GPU 3:
+  Utilization (GPU):    98.5% (mean), 100.0% (max)
+  Utilization (Memory): 15.4% (mean), 52.0% (max)
+  Memory Used:          32721 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          49.6°C (mean), 59.0°C (max)
+  Power Draw:           182.3W (mean), 402.8W (max)
+
+GPU 4:
+  Utilization (GPU):    96.6% (mean), 100.0% (max)
+  Utilization (Memory): 15.4% (mean), 52.0% (max)
+  Memory Used:          32721 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          48.4°C (mean), 58.0°C (max)
+  Power Draw:           188.4W (mean), 441.0W (max)
+
+GPU 5:
+  Utilization (GPU):    98.5% (mean), 100.0% (max)
+  Utilization (Memory): 15.4% (mean), 52.0% (max)
+  Memory Used:          32721 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          39.3°C (mean), 47.0°C (max)
+  Power Draw:           178.4W (mean), 416.4W (max)
+
+GPU 6:
+  Utilization (GPU):    96.8% (mean), 100.0% (max)
+  Utilization (Memory): 15.5% (mean), 52.0% (max)
+  Memory Used:          32721 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          37.1°C (mean), 45.0°C (max)
+  Power Draw:           172.2W (mean), 427.9W (max)
+
+GPU 7:
+  Utilization (GPU):    98.5% (mean), 100.0% (max)
+  Utilization (Memory): 15.7% (mean), 51.0% (max)
+  Memory Used:          32577 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          47.4°C (mean), 58.0°C (max)
+  Power Draw:           187.9W (mean), 425.4W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 97.9%
+  Average Memory Utilization: 16.3%
+  Average Power Draw: 186.7W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 59.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=7
+============================================================
+Total samples: 6144
+Duration: 2026-02-07 05:02:00 to 2026-02-07 11:27:31
+
+GPU 0:
+  Utilization (GPU):    98.0% (mean), 100.0% (max)
+  Utilization (Memory): 21.1% (mean), 52.0% (max)
+  Memory Used:          59133 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          52.4°C (mean), 58.0°C (max)
+  Power Draw:           220.1W (mean), 434.1W (max)
+
+GPU 1:
+  Utilization (GPU):    99.2% (mean), 100.0% (max)
+  Utilization (Memory): 15.5% (mean), 52.0% (max)
+  Memory Used:          33518 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.9°C (mean), 49.0°C (max)
+  Power Draw:           185.4W (mean), 429.1W (max)
+
+GPU 2:
+  Utilization (GPU):    98.5% (mean), 100.0% (max)
+  Utilization (Memory): 15.4% (mean), 52.0% (max)
+  Memory Used:          33518 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.0°C (mean), 47.0°C (max)
+  Power Draw:           182.3W (mean), 418.1W (max)
+
+GPU 3:
+  Utilization (GPU):    99.0% (mean), 100.0% (max)
+  Utilization (Memory): 15.4% (mean), 52.0% (max)
+  Memory Used:          33518 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          49.7°C (mean), 60.0°C (max)
+  Power Draw:           188.6W (mean), 432.8W (max)
+
+GPU 4:
+  Utilization (GPU):    97.1% (mean), 100.0% (max)
+  Utilization (Memory): 15.5% (mean), 52.0% (max)
+  Memory Used:          33518 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          48.5°C (mean), 58.0°C (max)
+  Power Draw:           188.8W (mean), 448.3W (max)
+
+GPU 5:
+  Utilization (GPU):    99.3% (mean), 100.0% (max)
+  Utilization (Memory): 15.5% (mean), 52.0% (max)
+  Memory Used:          33518 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          39.5°C (mean), 47.0°C (max)
+  Power Draw:           187.2W (mean), 424.7W (max)
+
+GPU 6:
+  Utilization (GPU):    97.0% (mean), 100.0% (max)
+  Utilization (Memory): 15.5% (mean), 52.0% (max)
+  Memory Used:          33518 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          37.2°C (mean), 45.0°C (max)
+  Power Draw:           181.9W (mean), 427.1W (max)
+
+GPU 7:
+  Utilization (GPU):    96.5% (mean), 100.0% (max)
+  Utilization (Memory): 15.5% (mean), 52.0% (max)
+  Memory Used:          33374 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          47.5°C (mean), 57.0°C (max)
+  Power Draw:           193.1W (mean), 419.5W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 98.1%
+  Average Memory Utilization: 16.2%
+  Average Power Draw: 190.9W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 60.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=8
+============================================================
+Total samples: 4784
+Duration: 2026-02-07 11:27:59 to 2026-02-07 16:28:02
+
+GPU 0:
+  Utilization (GPU):    97.6% (mean), 100.0% (max)
+  Utilization (Memory): 22.9% (mean), 52.0% (max)
+  Memory Used:          60582 MB (mean), 79879 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          53.4°C (mean), 59.0°C (max)
+  Power Draw:           221.7W (mean), 448.8W (max)
+
+GPU 1:
+  Utilization (GPU):    98.6% (mean), 100.0% (max)
+  Utilization (Memory): 15.0% (mean), 52.0% (max)
+  Memory Used:          30281 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          41.0°C (mean), 51.0°C (max)
+  Power Draw:           179.2W (mean), 429.7W (max)
+
+GPU 2:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 15.2% (mean), 52.0% (max)
+  Memory Used:          30281 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          39.9°C (mean), 49.0°C (max)
+  Power Draw:           173.9W (mean), 425.9W (max)
+
+GPU 3:
+  Utilization (GPU):    98.6% (mean), 100.0% (max)
+  Utilization (Memory): 14.6% (mean), 52.0% (max)
+  Memory Used:          30281 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          49.4°C (mean), 61.0°C (max)
+  Power Draw:           184.1W (mean), 437.1W (max)
+
+GPU 4:
+  Utilization (GPU):    99.1% (mean), 100.0% (max)
+  Utilization (Memory): 14.8% (mean), 52.0% (max)
+  Memory Used:          30281 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          48.1°C (mean), 59.0°C (max)
+  Power Draw:           176.4W (mean), 443.7W (max)
+
+GPU 5:
+  Utilization (GPU):    98.8% (mean), 100.0% (max)
+  Utilization (Memory): 14.6% (mean), 51.0% (max)
+  Memory Used:          30281 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          39.4°C (mean), 48.0°C (max)
+  Power Draw:           181.6W (mean), 424.0W (max)
+
+GPU 6:
+  Utilization (GPU):    99.1% (mean), 100.0% (max)
+  Utilization (Memory): 14.8% (mean), 51.0% (max)
+  Memory Used:          30281 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          37.3°C (mean), 46.0°C (max)
+  Power Draw:           171.7W (mean), 415.4W (max)
+
+GPU 7:
+  Utilization (GPU):    99.1% (mean), 100.0% (max)
+  Utilization (Memory): 15.1% (mean), 52.0% (max)
+  Memory Used:          30137 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          47.3°C (mean), 58.0°C (max)
+  Power Draw:           183.9W (mean), 398.9W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 98.7%
+  Average Memory Utilization: 15.9%
+  Average Power Draw: 184.0W
+  Peak Memory Used: 79879 MB (GPU 0)
+  Peak Temperature: 61.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=9
+============================================================
+Total samples: 4864
+Duration: 2026-02-07 16:28:39 to 2026-02-07 21:33:43
+
+GPU 0:
+  Utilization (GPU):    96.8% (mean), 100.0% (max)
+  Utilization (Memory): 21.9% (mean), 51.0% (max)
+  Memory Used:          60516 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          52.4°C (mean), 58.0°C (max)
+  Power Draw:           218.0W (mean), 436.8W (max)
+
+GPU 1:
+  Utilization (GPU):    98.0% (mean), 100.0% (max)
+  Utilization (Memory): 13.3% (mean), 52.0% (max)
+  Memory Used:          30417 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          40.3°C (mean), 50.0°C (max)
+  Power Draw:           174.6W (mean), 432.0W (max)
+
+GPU 2:
+  Utilization (GPU):    97.4% (mean), 100.0% (max)
+  Utilization (Memory): 13.3% (mean), 52.0% (max)
+  Memory Used:          30417 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          39.4°C (mean), 48.0°C (max)
+  Power Draw:           172.8W (mean), 434.7W (max)
+
+GPU 3:
+  Utilization (GPU):    97.5% (mean), 100.0% (max)
+  Utilization (Memory): 14.1% (mean), 51.0% (max)
+  Memory Used:          30417 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          48.4°C (mean), 59.0°C (max)
+  Power Draw:           180.9W (mean), 433.5W (max)
+
+GPU 4:
+  Utilization (GPU):    98.2% (mean), 100.0% (max)
+  Utilization (Memory): 13.7% (mean), 51.0% (max)
+  Memory Used:          30417 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          47.1°C (mean), 58.0°C (max)
+  Power Draw:           171.3W (mean), 437.9W (max)
+
+GPU 5:
+  Utilization (GPU):    96.1% (mean), 100.0% (max)
+  Utilization (Memory): 14.4% (mean), 52.0% (max)
+  Memory Used:          30417 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          38.8°C (mean), 47.0°C (max)
+  Power Draw:           177.0W (mean), 432.7W (max)
+
+GPU 6:
+  Utilization (GPU):    98.2% (mean), 100.0% (max)
+  Utilization (Memory): 13.8% (mean), 52.0% (max)
+  Memory Used:          30417 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          36.5°C (mean), 45.0°C (max)
+  Power Draw:           161.8W (mean), 414.9W (max)
+
+GPU 7:
+  Utilization (GPU):    95.9% (mean), 100.0% (max)
+  Utilization (Memory): 13.9% (mean), 51.0% (max)
+  Memory Used:          30274 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          46.4°C (mean), 57.0°C (max)
+  Power Draw:           186.0W (mean), 434.2W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 97.2%
+  Average Memory Utilization: 14.8%
+  Average Power Draw: 180.3W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 59.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=10
+============================================================
+Total samples: 4296
+Duration: 2026-02-07 21:40:36 to 2026-02-08 02:09:58
+
+GPU 0:
+  Utilization (GPU):    95.0% (mean), 100.0% (max)
+  Utilization (Memory): 21.7% (mean), 51.0% (max)
+  Memory Used:          60117 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          51.4°C (mean), 58.0°C (max)
+  Power Draw:           215.4W (mean), 440.5W (max)
+
+GPU 1:
+  Utilization (GPU):    96.1% (mean), 100.0% (max)
+  Utilization (Memory): 12.8% (mean), 51.0% (max)
+  Memory Used:          28260 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          39.0°C (mean), 49.0°C (max)
+  Power Draw:           165.9W (mean), 412.7W (max)
+
+GPU 2:
+  Utilization (GPU):    96.2% (mean), 100.0% (max)
+  Utilization (Memory): 12.8% (mean), 52.0% (max)
+  Memory Used:          28260 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          38.1°C (mean), 47.0°C (max)
+  Power Draw:           167.8W (mean), 385.5W (max)
+
+GPU 3:
+  Utilization (GPU):    96.5% (mean), 100.0% (max)
+  Utilization (Memory): 12.9% (mean), 51.0% (max)
+  Memory Used:          28260 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          46.8°C (mean), 60.0°C (max)
+  Power Draw:           171.7W (mean), 437.3W (max)
+
+GPU 4:
+  Utilization (GPU):    95.0% (mean), 100.0% (max)
+  Utilization (Memory): 12.9% (mean), 52.0% (max)
+  Memory Used:          28260 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          45.7°C (mean), 58.0°C (max)
+  Power Draw:           171.2W (mean), 445.1W (max)
+
+GPU 5:
+  Utilization (GPU):    96.4% (mean), 100.0% (max)
+  Utilization (Memory): 13.4% (mean), 51.0% (max)
+  Memory Used:          28260 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          37.5°C (mean), 47.0°C (max)
+  Power Draw:           170.6W (mean), 431.6W (max)
+
+GPU 6:
+  Utilization (GPU):    96.1% (mean), 100.0% (max)
+  Utilization (Memory): 12.9% (mean), 51.0% (max)
+  Memory Used:          28260 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          35.4°C (mean), 44.0°C (max)
+  Power Draw:           157.6W (mean), 380.7W (max)
+
+GPU 7:
+  Utilization (GPU):    94.8% (mean), 100.0% (max)
+  Utilization (Memory): 13.5% (mean), 51.0% (max)
+  Memory Used:          28118 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          44.8°C (mean), 57.0°C (max)
+  Power Draw:           177.0W (mean), 434.4W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 95.8%
+  Average Memory Utilization: 14.1%
+  Average Power Draw: 174.6W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 60.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=11
+============================================================
+Total samples: 3576
+Duration: 2026-02-08 02:10:37 to 2026-02-08 05:54:45
+
+GPU 0:
+  Utilization (GPU):    96.9% (mean), 100.0% (max)
+  Utilization (Memory): 22.1% (mean), 52.0% (max)
+  Memory Used:          62904 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          51.7°C (mean), 57.0°C (max)
+  Power Draw:           219.9W (mean), 439.1W (max)
+
+GPU 1:
+  Utilization (GPU):    98.7% (mean), 100.0% (max)
+  Utilization (Memory): 12.2% (mean), 51.0% (max)
+  Memory Used:          26387 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          38.3°C (mean), 49.0°C (max)
+  Power Draw:           161.3W (mean), 420.8W (max)
+
+GPU 2:
+  Utilization (GPU):    98.2% (mean), 100.0% (max)
+  Utilization (Memory): 11.8% (mean), 52.0% (max)
+  Memory Used:          26387 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          37.5°C (mean), 47.0°C (max)
+  Power Draw:           161.5W (mean), 388.8W (max)
+
+GPU 3:
+  Utilization (GPU):    98.2% (mean), 100.0% (max)
+  Utilization (Memory): 11.9% (mean), 51.0% (max)
+  Memory Used:          26387 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          45.8°C (mean), 58.0°C (max)
+  Power Draw:           168.0W (mean), 416.9W (max)
+
+GPU 4:
+  Utilization (GPU):    98.7% (mean), 100.0% (max)
+  Utilization (Memory): 12.2% (mean), 52.0% (max)
+  Memory Used:          26387 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          44.6°C (mean), 57.0°C (max)
+  Power Draw:           160.2W (mean), 424.3W (max)
+
+GPU 5:
+  Utilization (GPU):    97.1% (mean), 100.0% (max)
+  Utilization (Memory): 12.3% (mean), 52.0% (max)
+  Memory Used:          26387 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          36.9°C (mean), 47.0°C (max)
+  Power Draw:           167.8W (mean), 428.0W (max)
+
+GPU 6:
+  Utilization (GPU):    98.8% (mean), 100.0% (max)
+  Utilization (Memory): 11.8% (mean), 51.0% (max)
+  Memory Used:          26387 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          34.8°C (mean), 44.0°C (max)
+  Power Draw:           156.1W (mean), 432.3W (max)
+
+GPU 7:
+  Utilization (GPU):    98.6% (mean), 100.0% (max)
+  Utilization (Memory): 12.4% (mean), 52.0% (max)
+  Memory Used:          26244 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          43.8°C (mean), 55.0°C (max)
+  Power Draw:           162.0W (mean), 415.7W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 98.2%
+  Average Memory Utilization: 13.3%
+  Average Power Draw: 169.6W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 58.0°C (GPU 3)
+============================================================
+
+============================================================
+GPU Statistics Summary for k=12
+============================================================
+Total samples: 3208
+Duration: 2026-02-08 05:55:16 to 2026-02-08 09:16:17
+
+GPU 0:
+  Utilization (GPU):    98.1% (mean), 100.0% (max)
+  Utilization (Memory): 22.5% (mean), 51.0% (max)
+  Memory Used:          64155 MB (mean), 79881 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          51.9°C (mean), 57.0°C (max)
+  Power Draw:           223.6W (mean), 448.2W (max)
+
+GPU 1:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 11.5% (mean), 51.0% (max)
+  Memory Used:          24684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          38.0°C (mean), 49.0°C (max)
+  Power Draw:           160.5W (mean), 417.8W (max)
+
+GPU 2:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 11.4% (mean), 51.0% (max)
+  Memory Used:          24684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          37.0°C (mean), 47.0°C (max)
+  Power Draw:           154.2W (mean), 405.6W (max)
+
+GPU 3:
+  Utilization (GPU):    99.0% (mean), 100.0% (max)
+  Utilization (Memory): 11.7% (mean), 51.0% (max)
+  Memory Used:          24684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          45.1°C (mean), 58.0°C (max)
+  Power Draw:           156.3W (mean), 425.3W (max)
+
+GPU 4:
+  Utilization (GPU):    98.9% (mean), 100.0% (max)
+  Utilization (Memory): 11.4% (mean), 51.0% (max)
+  Memory Used:          24684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          43.9°C (mean), 57.0°C (max)
+  Power Draw:           156.6W (mean), 440.0W (max)
+
+GPU 5:
+  Utilization (GPU):    97.4% (mean), 100.0% (max)
+  Utilization (Memory): 11.1% (mean), 52.0% (max)
+  Memory Used:          24684 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          36.4°C (mean), 46.0°C (max)
+  Power Draw:           157.4W (mean), 431.6W (max)
+
+GPU 6:
+  Utilization (GPU):    97.6% (mean), 100.0% (max)
+  Utilization (Memory): 11.6% (mean), 52.0% (max)
+  Memory Used:          24686 MB (mean), 43987 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          34.5°C (mean), 44.0°C (max)
+  Power Draw:           151.4W (mean), 399.6W (max)
+
+GPU 7:
+  Utilization (GPU):    99.1% (mean), 100.0% (max)
+  Utilization (Memory): 11.1% (mean), 51.0% (max)
+  Memory Used:          24541 MB (mean), 43843 MB (max)
+  Memory Total:         81920 MB
+  Temperature:          43.1°C (mean), 56.0°C (max)
+  Power Draw:           160.6W (mean), 436.8W (max)
+
+Overall Statistics:
+  Average GPU Utilization: 98.5%
+  Average Memory Utilization: 12.8%
+  Average Power Draw: 165.1W
+  Peak Memory Used: 79881 MB (GPU 0)
+  Peak Temperature: 58.0°C (GPU 3)
+============================================================
+
