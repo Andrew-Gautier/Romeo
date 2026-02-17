@@ -29,69 +29,117 @@ Individual Results:
   Test F1: 0.9982 ± 0.0006
   OOD AUROC: 0.4974 ± 0.0092
   OOD F1: 0.5360 ± 0.1326
+  Test Precision: 0.9981 ± 0.0005
+  Test Recall: 0.9983 ± 0.0004
+  OOD Precision: 0.4995 ± 0.0033
+  OOD Recall: 0.6493 ± 0.1181
 
 --- k=2 ---
   Test AUROC: 0.9996 ± 0.0004
   Test F1: 0.9976 ± 0.0017
   OOD AUROC: 0.5003 ± 0.0093
   OOD F1: 0.4629 ± 0.2120
+  Test Precision: 0.9978 ± 0.0005
+  Test Recall: 0.9974 ± 0.0013
+  OOD Precision: 0.5015 ± 0.0054
+  OOD Recall: 0.5530 ± 0.1490
 
 --- k=3 ---
   Test AUROC: 0.9994 ± 0.0005
   Test F1: 0.9963 ± 0.0023
   OOD AUROC: 0.4974 ± 0.0137
   OOD F1: 0.5493 ± 0.1792
+  Test Precision: 0.9967 ± 0.0019
+  Test Recall: 0.9960 ± 0.0008
+  OOD Precision: 0.5029 ± 0.0058
+  OOD Recall: 0.7318 ± 0.1458
 
 --- k=4 ---
   Test AUROC: 0.9987 ± 0.0015
   Test F1: 0.9946 ± 0.0026
   OOD AUROC: 0.4893 ± 0.0106
   OOD F1: 0.5556 ± 0.1605
+  Test Precision: 0.9949 ± 0.0015
+  Test Recall: 0.9942 ± 0.0016
+  OOD Precision: 0.5012 ± 0.0068
+  OOD Recall: 0.7275 ± 0.1332
 
 --- k=5 ---
   Test AUROC: 0.9933 ± 0.0035
   Test F1: 0.9826 ± 0.0059
   OOD AUROC: 0.4967 ± 0.0121
   OOD F1: 0.5145 ± 0.1553
+  Test Precision: 0.9818 ± 0.0030
+  Test Recall: 0.9833 ± 0.0039
+  OOD Precision: 0.4996 ± 0.0047
+  OOD Recall: 0.6148 ± 0.1253
 
 --- k=6 ---
   Test AUROC: 0.9949 ± 0.0024
   Test F1: 0.9824 ± 0.0078
   OOD AUROC: 0.4831 ± 0.0089
   OOD F1: 0.5905 ± 0.0681
+  Test Precision: 0.9782 ± 0.0055
+  Test Recall: 0.9868 ± 0.0063
+  OOD Precision: 0.4953 ± 0.0020
+  OOD Recall: 0.7584 ± 0.0793
 
 --- k=7 ---
   Test AUROC: 0.9942 ± 0.0035
   Test F1: 0.9732 ± 0.0118
   OOD AUROC: 0.4891 ± 0.0119
   OOD F1: 0.5444 ± 0.1323
+  Test Precision: 0.9782 ± 0.0064
+  Test Recall: 0.9685 ± 0.0091
+  OOD Precision: 0.4944 ± 0.0023
+  OOD Recall: 0.6613 ± 0.0955
 
 --- k=8 ---
   Test AUROC: 0.9846 ± 0.0097
   Test F1: 0.9559 ± 0.0225
   OOD AUROC: 0.4969 ± 0.0135
   OOD F1: 0.5128 ± 0.2187
+  Test Precision: 0.9601 ± 0.0139
+  Test Recall: 0.9523 ± 0.0134
+  OOD Precision: 0.5054 ± 0.0090
+  OOD Recall: 0.6791 ± 0.1611
 
 --- k=9 ---
   Test AUROC: 0.9759 ± 0.0188
   Test F1: 0.9334 ± 0.0404
   OOD AUROC: 0.4964 ± 0.0101
   OOD F1: 0.5264 ± 0.1238
+  Test Precision: 0.9473 ± 0.0246
+  Test Recall: 0.9218 ± 0.0236
+  OOD Precision: 0.4972 ± 0.0033
+  OOD Recall: 0.6218 ± 0.1174
 
 --- k=10 ---
   Test AUROC: 0.9051 ± 0.0983
   Test F1: 0.8527 ± 0.0557
   OOD AUROC: 0.4854 ± 0.0141
   OOD F1: 0.5268 ± 0.1250
+  Test Precision: 0.8134 ± 0.0388
+  Test Recall: 0.9054 ± 0.0292
+  OOD Precision: 0.4929 ± 0.0054
+  OOD Recall: 0.6308 ± 0.1207
 
 --- k=11 ---
   Test AUROC: 0.9350 ± 0.0572
   Test F1: 0.8665 ± 0.0521
   OOD AUROC: 0.4924 ± 0.0114
   OOD F1: 0.5180 ± 0.1703
+  Test Precision: 0.8262 ± 0.0485
+  Test Recall: 0.9250 ± 0.0351
+  OOD Precision: 0.4954 ± 0.0057
+  OOD Recall: 0.6478 ± 0.1471
 
 --- k=12 ---
   Test AUROC: 0.7861 ± 0.1859
   Test F1: 0.8125 ± 0.0624
   OOD AUROC: 0.4912 ± 0.0149
   OOD F1: 0.5655 ± 0.1297
+  Test Precision: 0.7565 ± 0.0678
+  Test Recall: 0.9154 ± 0.0484
+  OOD Precision: 0.4978 ± 0.0021
+  OOD Recall: 0.7355 ± 0.1342
