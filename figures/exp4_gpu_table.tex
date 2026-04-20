@@ -1,0 +1,36 @@
+\begin{table}[ht]
+  \centering
+  \caption{Experiment 4 --- Worker GPU resource consumption and model performance
+           per SimHash deduplication threshold~$k$. Memory and power savings are
+           reported relative to the $k{=}1$ (no deduplication) baseline.
+           GPU compute utilisation remained above 96\% across all values of~$k$.}
+  \label{tab:exp4_gpu_efficiency}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{r r r r r r r r}
+    \toprule
+    $k$ & \makecell{Mem\\(GB)} & \makecell{$\Delta$Mem\\\%} & \makecell{Power\\(W)} & \makecell{$\Delta$Pwr\\\%} & \makecell{Temp\\($^\circ$C)} & \makecell{Test\\AUROC} & \makecell{OOD\\F1} \\
+    \midrule
+    \textbf{1} & \textbf{34.02} & \textbf{+0.0} & \textbf{191.5} & \textbf{+0.0} & \textbf{44.4} & \textbf{0.6536} & \textbf{0.6553} \\
+    \midrule
+    2 & 33.85 & +0.5 & 191.7 & -0.1 & 44.4 & 0.6592 & 0.6819 \\
+    3 & 33.99 & +0.1 & 191.6 & -0.1 & 44.5 & 0.6786 & 0.6596 \\
+    4 & 33.64 & +1.1 & 191.7 & -0.1 & 44.1 & 0.6558 & 0.6815 \\
+    5 & 33.12 & +2.6 & 187.9 & +1.9 & 43.9 & 0.6534 & 0.6625 \\
+    6 & 31.93 & +6.1 & 181.5 & +5.2 & 43.2 & 0.6530 & 0.6627 \\
+    7 & 32.71 & +3.8 & 186.8 & +2.5 & 43.3 & 0.6645 & 0.6723 \\
+    \textbf{8} & \textbf{29.55} & \textbf{+13.1} & \textbf{178.7} & \textbf{+6.7} & \textbf{43.2} & \textbf{0.6491} & \textbf{0.6600} \\
+    9 & 29.68 & +12.7 & 174.9 & +8.7 & 42.4 & 0.6361 & 0.6816 \\
+    10 & 27.58 & +18.9 & 168.8 & +11.8 & 41.0 & 0.6305 & 0.6585 \\
+    11 & 25.75 & +24.3 & 162.4 & +15.2 & 40.2 & 0.6208 & 0.6203 \\
+    12 & 24.09 & +29.2 & 156.7 & +18.2 & 39.7 & 0.6095 & 0.6103 \\
+    \bottomrule
+  \end{tabular}
+  \begin{tablenotes}
+    \small
+    \item Memory and power refer to the mean across worker GPUs (ranks 1--7)
+          during each $k$ run. $k{=}1$ = full dataset (no deduplication);
+          higher $k$ = more aggressive SimHash deduplication.
+    \item \textbf{Bold} rows mark the no-deduplication baseline ($k{=}1$)
+          and the recommended sweet-spot ($k{=}8$).
+  \end{tablenotes}
+\end{table}
